@@ -1,12 +1,26 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:lab2/models/openalex_ranked_entity.dart';
 import 'package:lab2/services/openalex_config.dart';
+import 'package:lab2/services/openalex_exception.dart';
 import 'package:lab2/services/openalex_service.dart';
 
 void main() {
+  OpenAlexService fastService(http.Client client) {
+    return OpenAlexService(
+      OpenAlexConfig(),
+      httpClient: client,
+      maxRetries: 1,
+      retryBackoffMs: 0,
+      requestTimeout: const Duration(milliseconds: 50),
+    );
+  }
+
   group('OpenAlexService HTTP', () {
     test('fetchWorksTotalCount parses meta count', () async {
       final client = MockClient((request) async {
@@ -391,11 +405,127 @@ void main() {
         );
       });
 
-      final service = OpenAlexService(OpenAlexConfig(), httpClient: client);
+      final service = OpenAlexService(
+        OpenAlexConfig(),
+        httpClient: client,
+        maxRetries: 2,
+        retryBackoffMs: 0,
+      );
       final count = await service.fetchWorksTotalCount(search: 'retry');
 
       expect(count, 7);
       expect(attempts, 2);
+    });
+
+    test('recovers after socket failure', () async {
+      var attempts = 0;
+      final client = MockClient((request) async {
+        attempts++;
+        if (attempts == 1) {
+          throw const SocketException('offline');
+        }
+        return http.Response(
+          jsonEncode({'meta': {'count': 3}, 'results': []}),
+          200,
+        );
+      });
+
+      final service = OpenAlexService(
+        OpenAlexConfig(),
+        httpClient: client,
+        maxRetries: 2,
+        retryBackoffMs: 0,
+      );
+      final count = await service.fetchWorksTotalCount(search: 'socket');
+
+      expect(count, 3);
+      expect(attempts, 2);
+    });
+
+    test('maps exhausted socket failures to OpenAlexException', () async {
+      final client = MockClient((request) async {
+        throw const SocketException('offline');
+      });
+
+      final service = fastService(client);
+
+      expect(
+        () => service.fetchWorksTotalCount(search: 'offline'),
+        throwsA(
+          isA<OpenAlexException>().having(
+            (error) => error.message,
+            'message',
+            contains('Khong ket noi'),
+          ),
+        ),
+      );
+    });
+
+    test('maps client exceptions to OpenAlexException', () async {
+      final client = MockClient((request) async {
+        throw http.ClientException('broken pipe');
+      });
+
+      final service = fastService(client);
+
+      expect(
+        () => service.fetchWorksTotalCount(search: 'client'),
+        throwsA(
+          isA<OpenAlexException>().having(
+            (error) => error.message,
+            'message',
+            contains('Loi mang'),
+          ),
+        ),
+      );
+    });
+
+    test('maps server busy responses after retries', () async {
+      final client = MockClient((request) async {
+        return http.Response('busy', 503);
+      });
+
+      final service = fastService(client);
+
+      expect(
+        () => service.fetchWorksTotalCount(search: 'busy'),
+        throwsA(
+          isA<OpenAlexException>().having(
+            (error) => error.statusCode,
+            'statusCode',
+            503,
+          ),
+        ),
+      );
+    });
+
+    test('fetchTopicGrowthInsights ranks concept growth', () async {
+      final client = MockClient((request) async {
+        if (request.url.queryParameters['group_by'] == 'publication_year') {
+          return http.Response(
+            jsonEncode({
+              'group_by': [
+                {'key': '2020', 'count': 10},
+                {'key': '2024', 'count': 30},
+              ],
+            }),
+            200,
+          );
+        }
+        return http.Response(jsonEncode({'group_by': []}), 200);
+      });
+
+      final service = fastService(client);
+      final insights = await service.fetchTopicGrowthInsights(
+        concepts: const [
+          OpenAlexRankedEntity(id: 'C1', name: 'AI', count: 10),
+        ],
+        search: 'ai',
+      );
+
+      expect(insights, isNotEmpty);
+      expect(insights.first.name, 'AI');
+      expect(insights.first.growthPercent, greaterThan(0));
     });
   });
 }

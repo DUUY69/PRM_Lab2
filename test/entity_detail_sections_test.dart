@@ -142,4 +142,43 @@ void main() {
     await tester.tap(find.text('Load more'));
     expect(loadedMore, isTrue);
   });
+
+  testWidgets('EntityPapersSection shows empty message', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: EntityPapersSection(
+            title: 'Papers',
+            subtitle: 'Most cited',
+            papers: const [],
+            totalCount: 0,
+            isLoadingMore: false,
+            hasMore: false,
+            onLoadMore: _noop,
+            emptyMessage: 'No papers yet',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('No papers yet'), findsOneWidget);
+  });
+
+  testWidgets('EntityStatColumn renders optional hint', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: EntityStatColumn(
+            label: 'Loaded',
+            value: '20',
+            hint: 'on screen',
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('on screen'), findsOneWidget);
+  });
 }
+
+void _noop() {}

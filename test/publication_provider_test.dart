@@ -130,12 +130,31 @@ void main() {
   group('PublicationProvider with mocked OpenAlex', () {
     late PublicationProvider provider;
 
+    OpenAlexService fastOpenAlex(http.Client client) {
+      return OpenAlexService(
+        OpenAlexConfig(),
+        httpClient: client,
+        maxRetries: 1,
+        retryBackoffMs: 0,
+      );
+    }
+
     setUp(() {
-      final client = buildOpenAlexMockClient();
       provider = PublicationProvider(
         config: OpenAlexConfig(),
-        openAlexService: OpenAlexService(OpenAlexConfig(), httpClient: client),
+        openAlexService: fastOpenAlex(buildOpenAlexMockClient()),
       );
+    });
+
+    test('loadDefaultDashboard loads global metrics', () async {
+      await provider.loadDefaultDashboard();
+
+      expect(provider.isGlobalScope, isTrue);
+      expect(provider.totalOnOpenAlex, 100);
+      expect(provider.yearlyTrendFromOpenAlex, isNotEmpty);
+      expect(provider.topPapersOpenAlex, isNotEmpty);
+      expect(provider.isDashboardLoading, isFalse);
+      expect(provider.isTrendLoading, isFalse);
     });
 
     test('searchPublications loads first page and background metrics', () async {
@@ -213,6 +232,36 @@ void main() {
       expect(trend[2024], 30);
     });
 
+    test('loadAuthorTrend and loadJournalTrend return yearly counts', () async {
+      const author = OpenAlexRankedEntity(id: 'A1', name: 'Alice', count: 1);
+      const journal = OpenAlexRankedEntity(id: 'J1', name: 'Nature', count: 1);
+
+      final authorTrend = await provider.loadAuthorTrend(author);
+      final journalTrend = await provider.loadJournalTrend(journal);
+
+      expect(authorTrend[2024], 30);
+      expect(journalTrend[2024], 30);
+    });
+
+    test('loadConceptsForYear and ranked lookups work in topic scope', () async {
+      provider.scope = AnalysisScope.topic;
+      provider.currentTopic = 'ai';
+
+      final concepts = await provider.loadConceptsForYear(2024);
+
+      expect(concepts.single.name, 'Alice');
+    });
+
+    test('refreshCurrentAnalysis reloads active topic search', () async {
+      await provider.searchPublications('robotics');
+      final firstTitle = provider.publications.single.title;
+
+      await provider.refreshCurrentAnalysis();
+
+      expect(provider.currentTopic, 'robotics');
+      expect(provider.publications.single.title, firstTitle);
+    });
+
     test('searchPublications ignores blank query', () async {
       await provider.searchPublications('   ');
 
@@ -226,10 +275,7 @@ void main() {
       });
       final failingProvider = PublicationProvider(
         config: OpenAlexConfig(),
-        openAlexService: OpenAlexService(
-          OpenAlexConfig(),
-          httpClient: failingClient,
-        ),
+        openAlexService: fastOpenAlex(failingClient),
       );
 
       await failingProvider.searchPublications('blocked');

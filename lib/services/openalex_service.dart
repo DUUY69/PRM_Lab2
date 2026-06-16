@@ -32,16 +32,25 @@ import 'openalex_exception.dart';
 
 /// Service chịu trách nhiệm giao tiếp với OpenAlex API
 class OpenAlexService {
-  OpenAlexService(this._config, {http.Client? httpClient})
-      : _httpClient = httpClient ?? http.Client();
+  OpenAlexService(
+    this._config, {
+    http.Client? httpClient,
+    int? maxRetries,
+    Duration? requestTimeout,
+    int? retryBackoffMs,
+  })  : _httpClient = httpClient ?? http.Client(),
+        _maxRetries = maxRetries ?? 4,
+        _requestTimeout = requestTimeout ?? const Duration(seconds: 45),
+        _retryBackoffMs = retryBackoffMs ?? 1500;
 
   final OpenAlexConfig _config;
   final http.Client _httpClient;
+  final int _maxRetries;
+  final Duration _requestTimeout;
+  final int _retryBackoffMs;
 
   String get _apiKey => _config.apiKey;
 
-  static const int _maxRetries = 4;
-  static const Duration _requestTimeout = Duration(seconds: 45);
   static const Set<int> _retryStatusCodes = {429, 502, 503, 504};
   static const String _sortByCitationsDesc = 'cited_by_count:desc';
 
@@ -987,7 +996,7 @@ class OpenAlexService {
   /// Chờ tăng dần giữa các lần retry (1.5s, 3s, 4.5s…).
   Future<void> _backoff(int attempt) async {
     await Future<void>.delayed(
-      Duration(milliseconds: 1500 * (attempt + 1)),
+      Duration(milliseconds: _retryBackoffMs * (attempt + 1)),
     );
   }
 
