@@ -32,39 +32,58 @@ class OverviewScreen extends StatelessWidget {
       child: Column(
         children: [
           const JournalAiAppBar(showRefresh: true, showBell: true),
-          if (provider.isDashboardLoading && !provider.hasData)
-            const Expanded(
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            )
-          else if (provider.errorMessage != null && !provider.hasData)
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
+          _OverviewBody(provider: provider),
+        ],
+      ),
+    );
+  }
+}
+
+class _OverviewBody extends StatelessWidget {
+  final PublicationProvider provider;
+
+  const _OverviewBody({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    if (provider.isDashboardLoading && !provider.hasData) {
+      return const Expanded(
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    if (provider.errorMessage != null && !provider.hasData) {
+      return Expanded(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: ErrorBanner(
+            message: provider.errorMessage!,
+            onRetry: () => provider.loadDefaultDashboard(),
+          ),
+        ),
+      );
+    }
+
+    if (!provider.hasData) {
+      return const Expanded(
+        child: Center(child: Text('Loading research data...')),
+      );
+    }
+
+    return Expanded(
+      child: RefreshIndicator(
+        onRefresh: () => provider.refreshCurrentAnalysis(),
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          children: [
+            if (provider.errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
                 child: ErrorBanner(
                   message: provider.errorMessage!,
-                  onRetry: () => provider.loadDefaultDashboard(),
+                  onRetry: () => provider.refreshCurrentAnalysis(),
                 ),
               ),
-            )
-          else if (!provider.hasData)
-            const Expanded(
-              child: Center(child: Text('Loading research data...')),
-            )
-          else
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () => provider.refreshCurrentAnalysis(),
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                  children: [
-                    if (provider.errorMessage != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: ErrorBanner(
-                          message: provider.errorMessage!,
-                          onRetry: () => provider.refreshCurrentAnalysis(),
-                        ),
-                      ),
                     const Text(
                       'Global Research Overview',
                       style: TextStyle(
@@ -389,9 +408,9 @@ class OverviewScreen extends StatelessWidget {
                                                   fontWeight: FontWeight.w500,
                                                 ),
                                               ),
-                                              Text(
+                                              const Text(
                                                 'growth vs early period',
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   color:
                                                       AppColors.textSecondary,
                                                   fontSize: 10,
@@ -438,9 +457,6 @@ class OverviewScreen extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
-        ],
-      ),
     );
   }
 }

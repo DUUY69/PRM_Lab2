@@ -134,33 +134,35 @@ class _AuthorDetailScreenState extends State<AuthorDetailScreen> {
     return _papers.fold<int>(0, (sum, p) => sum + p.citations) / _papers.length;
   }
 
-  /// UI: stats → trend chart → papers + load more → top journals.
-  @override
-  Widget build(BuildContext context) {
-    final totalCount =
-        _totalCount > 0 ? _totalCount : widget.author.count;
-    final insight = _insight;
+  Widget _buildTrendChart() {
+    if (_trend.isEmpty) {
+      return const Text(
+        'No trend data for this author.',
+        style: TextStyle(color: AppColors.textSecondary),
+      );
+    }
+    return TrendChart(yearlyData: _trend);
+  }
 
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.author.name)),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null && _papers.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_error!),
-                      TextButton(
-                        onPressed: _loadInitial,
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(_error!),
+          TextButton(
+            onPressed: _loadInitial,
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadedBody(int totalCount, TrendInsight? insight) {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
                     MockupCard(
                       child: Row(
                         children: [
@@ -228,14 +230,7 @@ class _AuthorDetailScreenState extends State<AuthorDetailScreen> {
                     const SizedBox(height: 12),
                     MockupCard(
                       padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
-                      child: _trend.isEmpty
-                          ? const Text(
-                              'No trend data for this author.',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                            )
-                          : TrendChart(yearlyData: _trend),
+                      child: _buildTrendChart(),
                     ),
                     const SizedBox(height: 24),
                     const ScreenSectionHeader(
@@ -293,7 +288,27 @@ class _AuthorDetailScreenState extends State<AuthorDetailScreen> {
                         ),
                       ),
                   ],
-                ),
+    );
+  }
+
+  Widget _buildBody(int totalCount, TrendInsight? insight) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null && _papers.isEmpty) {
+      return _buildErrorState();
+    }
+    return _buildLoadedBody(totalCount, insight);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final totalCount =
+        _totalCount > 0 ? _totalCount : widget.author.count;
+
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.author.name)),
+      body: _buildBody(totalCount, _insight),
     );
   }
 }

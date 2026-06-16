@@ -105,6 +105,317 @@ class _DetailScreenState extends State<DetailScreen> {
     );
   }
 
+  PreferredSizeWidget _buildAppBar(Publication publication) {
+    return AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, size: 20),
+        onPressed: () => Navigator.pop(context),
+      ),
+      actions: [
+        if (publication.hasReadLink)
+          IconButton(
+            icon: const Icon(Icons.open_in_new, size: 20),
+            tooltip: 'Read paper',
+            onPressed: () => _openUrl(publication.readUrl!),
+          ),
+        IconButton(
+          icon: const Icon(Icons.share_outlined, size: 20),
+          onPressed: publication.hasReadLink
+              ? () => _openUrl(publication.readUrl!)
+              : null,
+        ),
+        IconButton(
+          icon: const Icon(Icons.bookmark_border, size: 20),
+          onPressed: () {},
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildSummarySection(
+    Publication publication,
+    bool influential,
+  ) {
+    return [
+      Text(
+        publication.title,
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          height: 1.35,
+        ),
+      ),
+      const SizedBox(height: 16),
+      Text(
+        formatOpenAlexCount(publication.citations),
+        style: const TextStyle(
+          fontSize: 26,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      const Text(
+        'Citations',
+        style: TextStyle(color: AppColors.textSecondary),
+      ),
+      if (influential) ...[
+        const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 4,
+          ),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: const Text(
+            'Highly Influential',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+      const SizedBox(height: 20),
+      if (publication.hasReadLink) ...[
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: () => _openUrl(publication.readUrl!),
+            icon: const Icon(Icons.menu_book_outlined, size: 18),
+            label: Text(_readPaperLabel(publication)),
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+      _LinksSection(
+        publication: publication,
+        onOpenUrl: _openUrl,
+      ),
+      const SizedBox(height: 20),
+      _DetailLine(label: 'Year', value: '${publication.year}'),
+      _DetailLine(label: 'Type', value: publication.workType),
+      _DetailLine(label: 'Journal', value: publication.journal),
+      if (publication.hasDoi) ...[
+        const SizedBox(height: 4),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(
+              width: 72,
+              child: Text(
+                'DOI',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    publication.displayDoi,
+                    style: const TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _copyDoi(publication),
+                    icon: const Icon(Icons.copy, size: 16),
+                    label: const Text('Copy DOI'),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    ];
+  }
+
+  String _readPaperLabel(Publication publication) {
+    if (publication.openAccessUrl != null) {
+      return 'Read paper (Open Access)';
+    }
+    return 'Read paper';
+  }
+
+  List<Widget> _buildAuthorsSection(
+    List<PublicationAuthor> authors,
+    List<PublicationAuthor> visibleAuthors,
+    bool hasManyAuthors,
+  ) {
+    return [
+      const SizedBox(height: 16),
+      const Text(
+        'Authors',
+        style: TextStyle(
+          fontSize: 12,
+          letterSpacing: 0.5,
+          color: AppColors.textSecondary,
+        ),
+      ),
+      const SizedBox(height: 8),
+      ...visibleAuthors.map(_buildAuthorRow),
+      if (hasManyAuthors)
+        TextButton(
+          onPressed: () {
+            setState(() => _expandedAuthors = !_expandedAuthors);
+          },
+          child: Text(_authorsToggleLabel(authors.length)),
+        ),
+    ];
+  }
+
+  Widget _buildAuthorRow(PublicationAuthor author) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: InkWell(
+        onTap: author.hasOpenAlexId ? () => _openAuthor(author) : null,
+        child: Row(
+          children: [
+            const Text('• '),
+            Expanded(
+              child: Text(
+                author.name,
+                style: TextStyle(
+                  decoration: author.hasOpenAlexId
+                      ? TextDecoration.underline
+                      : null,
+                  color: author.hasOpenAlexId
+                      ? AppColors.textPrimary
+                      : AppColors.textSecondary,
+                ),
+              ),
+            ),
+            if (author.hasOpenAlexId)
+              const Icon(
+                Icons.arrow_forward_ios,
+                size: 12,
+                color: AppColors.textSecondary,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _authorsToggleLabel(int authorCount) {
+    if (_expandedAuthors) {
+      return 'Show less';
+    }
+    return 'Show all $authorCount authors';
+  }
+
+  List<Widget> _buildAbstractSection(Publication publication) {
+    return [
+      const SizedBox(height: 16),
+      const Divider(),
+      const SizedBox(height: 16),
+      const Text(
+        'Abstract',
+        style: TextStyle(
+          fontSize: 12,
+          letterSpacing: 0.5,
+          color: AppColors.textSecondary,
+        ),
+      ),
+      const SizedBox(height: 10),
+      Text(
+        publication.abstractText,
+        maxLines: _expandedAbstract ? null : 8,
+        overflow: _expandedAbstract ? null : TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: AppColors.textSecondary,
+          height: 1.6,
+          fontSize: 14,
+        ),
+      ),
+      if (publication.abstractText.length > 180)
+        TextButton(
+          onPressed: () {
+            setState(() => _expandedAbstract = !_expandedAbstract);
+          },
+          child: Text(_expandedAbstract ? 'Show less' : 'Show more'),
+        ),
+    ];
+  }
+
+  List<Widget> _buildRelatedSection(Publication publication) {
+    if (publication.relatedWorkIds.isEmpty) {
+      return const [];
+    }
+
+    return [
+      const SizedBox(height: 16),
+      const Divider(),
+      const SizedBox(height: 16),
+      const Text(
+        'Related Papers',
+        style: TextStyle(
+          fontSize: 12,
+          letterSpacing: 0.5,
+          color: AppColors.textSecondary,
+        ),
+      ),
+      const SizedBox(height: 10),
+      ..._buildRelatedContent(),
+    ];
+  }
+
+  List<Widget> _buildRelatedContent() {
+    if (_loadingRelated) {
+      return const [
+        Center(
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      ];
+    }
+
+    if (_relatedWorks.isEmpty) {
+      return const [
+        Text(
+          'No related papers loaded from OpenAlex.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      ];
+    }
+
+    return _relatedWorks
+        .map(
+          (paper) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              title: Text(
+                paper.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                '${paper.year} · '
+                '${formatOpenAlexCount(paper.citations)} citations',
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios, size: 14),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DetailScreen(publication: paper),
+                  ),
+                );
+              },
+            ),
+          ),
+        )
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final publication = widget.publication;
@@ -116,271 +427,16 @@ class _DetailScreenState extends State<DetailScreen> {
         : authors.take(_authorPreviewCount).toList();
 
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          if (publication.hasReadLink)
-            IconButton(
-              icon: const Icon(Icons.open_in_new, size: 20),
-              tooltip: 'Read paper',
-              onPressed: () => _openUrl(publication.readUrl!),
-            ),
-          IconButton(
-            icon: const Icon(Icons.share_outlined, size: 20),
-            onPressed: publication.hasReadLink
-                ? () => _openUrl(publication.readUrl!)
-                : null,
-          ),
-          IconButton(
-            icon: const Icon(Icons.bookmark_border, size: 20),
-            onPressed: () {},
-          ),
-        ],
-      ),
+      appBar: _buildAppBar(publication),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              publication.title,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                height: 1.35,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              formatOpenAlexCount(publication.citations),
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const Text(
-              'Citations',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-            if (influential) ...[
-              const SizedBox(height: 10),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text(
-                  'Highly Influential',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 20),
-            if (publication.hasReadLink) ...[
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => _openUrl(publication.readUrl!),
-                  icon: const Icon(Icons.menu_book_outlined, size: 18),
-                  label: Text(
-                    publication.openAccessUrl != null
-                        ? 'Read paper (Open Access)'
-                        : 'Read paper',
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-            _LinksSection(
-              publication: publication,
-              onOpenUrl: _openUrl,
-            ),
-            const SizedBox(height: 20),
-            _DetailLine(label: 'Year', value: '${publication.year}'),
-            _DetailLine(label: 'Type', value: publication.workType),
-            _DetailLine(label: 'Journal', value: publication.journal),
-            if (publication.hasDoi) ...[
-              const SizedBox(height: 4),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(
-                    width: 72,
-                    child: Text(
-                      'DOI',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          publication.displayDoi,
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        TextButton.icon(
-                          onPressed: () => _copyDoi(publication),
-                          icon: const Icon(Icons.copy, size: 16),
-                          label: const Text('Copy DOI'),
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 16),
-            const Text(
-              'Authors',
-              style: TextStyle(
-                fontSize: 12,
-                letterSpacing: 0.5,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            ...visibleAuthors.map(
-              (author) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: InkWell(
-                  onTap: author.hasOpenAlexId
-                      ? () => _openAuthor(author)
-                      : null,
-                  child: Row(
-                    children: [
-                      const Text('• '),
-                      Expanded(
-                        child: Text(
-                          author.name,
-                          style: TextStyle(
-                            decoration: author.hasOpenAlexId
-                                ? TextDecoration.underline
-                                : null,
-                            color: author.hasOpenAlexId
-                                ? AppColors.textPrimary
-                                : AppColors.textSecondary,
-                          ),
-                        ),
-                      ),
-                      if (author.hasOpenAlexId)
-                        const Icon(
-                          Icons.arrow_forward_ios,
-                          size: 12,
-                          color: AppColors.textSecondary,
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            if (hasManyAuthors)
-              TextButton(
-                onPressed: () {
-                  setState(() => _expandedAuthors = !_expandedAuthors);
-                },
-                child: Text(
-                  _expandedAuthors
-                      ? 'Show less'
-                      : 'Show all ${authors.length} authors',
-                ),
-              ),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 16),
-            const Text(
-              'Abstract',
-              style: TextStyle(
-                fontSize: 12,
-                letterSpacing: 0.5,
-                color: AppColors.textSecondary,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              publication.abstractText,
-              maxLines: _expandedAbstract ? null : 8,
-              overflow: _expandedAbstract ? null : TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                height: 1.6,
-                fontSize: 14,
-              ),
-            ),
-            if (publication.abstractText.length > 180)
-              TextButton(
-                onPressed: () {
-                  setState(() => _expandedAbstract = !_expandedAbstract);
-                },
-                child: Text(_expandedAbstract ? 'Show less' : 'Show more'),
-              ),
-            if (publication.relatedWorkIds.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 16),
-              const Text(
-                'Related Papers',
-                style: TextStyle(
-                  fontSize: 12,
-                  letterSpacing: 0.5,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              const SizedBox(height: 10),
-              if (_loadingRelated)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              else if (_relatedWorks.isEmpty)
-                const Text(
-                  'No related papers loaded from OpenAlex.',
-                  style: TextStyle(color: AppColors.textSecondary),
-                )
-              else
-                ..._relatedWorks.map(
-                  (paper) => Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      title: Text(
-                        paper.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: Text(
-                        '${paper.year} · '
-                        '${formatOpenAlexCount(paper.citations)} citations',
-                      ),
-                      trailing: const Icon(Icons.arrow_forward_ios, size: 14),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => DetailScreen(publication: paper),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-            ],
+            ..._buildSummarySection(publication, influential),
+            ..._buildAuthorsSection(authors, visibleAuthors, hasManyAuthors),
+            ..._buildAbstractSection(publication),
+            ..._buildRelatedSection(publication),
           ],
         ),
       ),

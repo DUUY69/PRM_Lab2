@@ -203,7 +203,7 @@ class _AboutScreenState extends State<AboutScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                _AboutRow(label: 'Data Source', value: 'OpenAlex API'),
+                const _AboutRow(label: 'Data Source', value: 'OpenAlex API'),
                 _AboutRow(
                   label: 'Coverage',
                   value: '2015–${DateTime.now().year}',
@@ -214,8 +214,8 @@ class _AboutScreenState extends State<AboutScreen> {
                       ? provider.formattedTotalOnOpenAlex
                       : 'Loading from OpenAlex…',
                 ),
-                _AboutRow(label: 'Version', value: '1.0.0'),
-                _AboutRow(label: 'Course', value: 'PRM393 Lab 2'),
+                const _AboutRow(label: 'Version', value: '1.0.0'),
+                const _AboutRow(label: 'Course', value: 'PRM393 Lab 2'),
               ],
             ),
           ),

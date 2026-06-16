@@ -1,15 +1,26 @@
-// =============================================================================
-// trend_chart.dart — BIỂU ĐỒ LINE TREND (fl_chart)
-// =============================================================================
-// Input: Map<int,int> năm → số bài (hoặc citations).
-// Dùng ở: TrendScreen, GrowthScreen, Keywords tab, Author/Journal/Domain detail.
-// =============================================================================
-
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../utils/count_format.dart';
+
+class _TrendChartScale {
+  const _TrendChartScale({
+    required this.years,
+    required this.spots,
+    required this.chartMinY,
+    required this.chartMaxY,
+    required this.yInterval,
+    required this.labelInterval,
+  });
+
+  final List<int> years;
+  final List<FlSpot> spots;
+  final double chartMinY;
+  final double chartMaxY;
+  final double yInterval;
+  final int labelInterval;
+}
 
 /// Line chart — trục X theo thứ tự năm, tooltip khi chạm điểm
 class TrendChart extends StatelessWidget {
@@ -22,9 +33,8 @@ class TrendChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final years = yearlyData.keys.toList()..sort();
-
-    if (years.isEmpty) {
+    final scale = _buildScale(yearlyData);
+    if (scale == null) {
       return const SizedBox(
         height: 220,
         child: Center(
@@ -36,133 +46,150 @@ class TrendChart extends StatelessWidget {
       );
     }
 
-    // Chuyển Map → FlSpot cho fl_chart
-    final spots = <FlSpot>[];
-    for (var i = 0; i < years.length; i++) {
-      spots.add(FlSpot(i.toDouble(), yearlyData[years[i]]!.toDouble()));
+    return SizedBox(
+      height: 280,
+      child: LineChart(_buildChartData(scale)),
+    );
+  }
+
+  _TrendChartScale? _buildScale(Map<int, int> data) {
+    final years = data.keys.toList()..sort();
+    if (years.isEmpty) {
+      return null;
     }
 
-    final maxY = yearlyData.values.reduce((a, b) => a > b ? a : b).toDouble();
-    final minY = yearlyData.values.reduce((a, b) => a < b ? a : b).toDouble();
+    final spots = <FlSpot>[];
+    for (var i = 0; i < years.length; i++) {
+      spots.add(FlSpot(i.toDouble(), data[years[i]]!.toDouble()));
+    }
+
+    final maxY = data.values.reduce((a, b) => a > b ? a : b).toDouble();
+    final minY = data.values.reduce((a, b) => a < b ? a : b).toDouble();
     final yPadding = (maxY - minY) * 0.15;
     final chartMaxY = maxY + (yPadding > 0 ? yPadding : maxY * 0.1);
     final chartMinY = (minY - yPadding).clamp(0, minY).toDouble();
-    final yInterval = _niceInterval(chartMaxY - chartMinY);
-    final labelInterval = years.length <= 6 ? 1 : (years.length / 5).ceil();
 
-    return SizedBox(
-      height: 280,
-      child: LineChart(
-        LineChartData(
-          minX: 0,
-          maxX: (years.length - 1).toDouble(),
-          minY: chartMinY,
-          maxY: chartMaxY,
-          gridData: FlGridData(
-            drawVerticalLine: false,
-            horizontalInterval: yInterval,
-            getDrawingHorizontalLine: (_) => const FlLine(
-              color: AppColors.border,
-              strokeWidth: 1,
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          lineTouchData: LineTouchData(
-            touchTooltipData: LineTouchTooltipData(
-              getTooltipItems: (spots) {
-                return spots.map((spot) {
-                  final index = spot.x.toInt();
-                  if (index < 0 || index >= years.length) {
-                    return null;
-                  }
-                  return LineTooltipItem(
-                    '${years[index]}\n${formatOpenAlexCount(spot.y.toInt())}',
-                    const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  );
-                }).toList();
-              },
-            ),
-          ),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots,
-              isCurved: years.length > 2,
-              curveSmoothness: 0.2,
+    return _TrendChartScale(
+      years: years,
+      spots: spots,
+      chartMinY: chartMinY,
+      chartMaxY: chartMaxY,
+      yInterval: _niceInterval(chartMaxY - chartMinY),
+      labelInterval: years.length <= 6 ? 1 : (years.length / 5).ceil(),
+    );
+  }
+
+  LineChartData _buildChartData(_TrendChartScale scale) {
+    return LineChartData(
+      minX: 0,
+      maxX: (scale.years.length - 1).toDouble(),
+      minY: scale.chartMinY,
+      maxY: scale.chartMaxY,
+      gridData: FlGridData(
+        drawVerticalLine: false,
+        horizontalInterval: scale.yInterval,
+        getDrawingHorizontalLine: (_) => const FlLine(
+          color: AppColors.border,
+          strokeWidth: 1,
+        ),
+      ),
+      borderData: FlBorderData(show: false),
+      lineTouchData: LineTouchData(
+        touchTooltipData: LineTouchTooltipData(
+          getTooltipItems: (spots) {
+            return spots.map((spot) {
+              final index = spot.x.toInt();
+              if (index < 0 || index >= scale.years.length) {
+                return null;
+              }
+              return LineTooltipItem(
+                '${scale.years[index]}\n${formatOpenAlexCount(spot.y.toInt())}',
+                const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              );
+            }).toList();
+          },
+        ),
+      ),
+      lineBarsData: [
+        LineChartBarData(
+          spots: scale.spots,
+          isCurved: scale.years.length > 2,
+          curveSmoothness: 0.2,
+          color: AppColors.textPrimary,
+          barWidth: 2.5,
+          dotData: FlDotData(
+            show: scale.years.length <= 12,
+            getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
+              radius: 3.5,
               color: AppColors.textPrimary,
-              barWidth: 2.5,
-              dotData: FlDotData(
-                show: years.length <= 12,
-                getDotPainter: (spot, percent, bar, index) =>
-                    FlDotCirclePainter(
-                  radius: 3.5,
-                  color: AppColors.textPrimary,
-                  strokeWidth: 0,
+              strokeWidth: 0,
+            ),
+          ),
+        ),
+      ],
+      titlesData: _buildTitles(scale),
+    );
+  }
+
+  FlTitlesData _buildTitles(_TrendChartScale scale) {
+    return FlTitlesData(
+      rightTitles: const AxisTitles(
+        sideTitles: SideTitles(showTitles: false),
+      ),
+      topTitles: const AxisTitles(
+        sideTitles: SideTitles(showTitles: false),
+      ),
+      bottomTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          reservedSize: 30,
+          interval: 1,
+          getTitlesWidget: (value, meta) {
+            final index = value.toInt();
+            if (index < 0 ||
+                index >= scale.years.length ||
+                index % scale.labelInterval != 0) {
+              return const SizedBox.shrink();
+            }
+            return Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                '${scale.years[index]}',
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 11,
                 ),
               ),
-            ),
-          ],
-          titlesData: FlTitlesData(
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 30,
-                interval: 1,
-                getTitlesWidget: (value, meta) {
-                  final index = value.toInt();
-                  if (index < 0 ||
-                      index >= years.length ||
-                      index % labelInterval != 0) {
-                    return const SizedBox.shrink();
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      '${years[index]}',
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 11,
-                      ),
-                    ),
-                  );
-                },
+            );
+          },
+        ),
+      ),
+      leftTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          reservedSize: 44,
+          interval: scale.yInterval,
+          getTitlesWidget: (value, meta) {
+            if (value < scale.chartMinY || value > scale.chartMaxY) {
+              return const SizedBox.shrink();
+            }
+            return Text(
+              formatOpenAlexCount(value.toInt()),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 10,
               ),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 44,
-                interval: yInterval,
-                getTitlesWidget: (value, meta) {
-                  if (value < chartMinY || value > chartMaxY) {
-                    return const SizedBox.shrink();
-                  }
-                  return Text(
-                    formatOpenAlexCount(value.toInt()),
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 10,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
+            );
+          },
         ),
       ),
     );
   }
 
-  /// Chọn bước trục Y đẹp (1, 2, 5, 10 × 10^n)
   double _niceInterval(double range) {
     if (range <= 0) return 1;
     final raw = range / 4;

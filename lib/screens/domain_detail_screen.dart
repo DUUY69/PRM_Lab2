@@ -131,44 +131,39 @@ class _DomainDetailScreenState extends State<DomainDetailScreen> {
     }
   }
 
-  /// Vẽ UI: loading / lỗi / ListView các section (stats, chart, papers, authors, journals).
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<PublicationProvider>();
-    final insight = _insight;
-    final totalCount =
-        _papersTotal > 0 ? _papersTotal : widget.domain.count;
+  Widget _buildTrendChart() {
+    if (_trend.isEmpty) {
+      return const Text(
+        'No trend data for this domain.',
+        style: TextStyle(color: AppColors.textSecondary),
+      );
+    }
+    return TrendChart(yearlyData: _trend);
+  }
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          widget.domain.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_error!, textAlign: TextAlign.center),
+            TextButton(onPressed: _load, child: const Text('Retry')),
+          ],
         ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-          : _error != null && insight == null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        TextButton(onPressed: _load, child: const Text('Retry')),
-                      ],
-                    ),
-                  ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
+    );
+  }
+
+  Widget _buildLoadedBody(
+    PublicationProvider provider,
+    int totalCount,
+    TrendInsight? insight,
+  ) {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
                     MockupCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,14 +231,7 @@ class _DomainDetailScreenState extends State<DomainDetailScreen> {
                     const SizedBox(height: 12),
                     MockupCard(
                       padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
-                      child: _trend.isEmpty
-                          ? const Text(
-                              'No trend data for this domain.',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                            )
-                          : TrendChart(yearlyData: _trend),
+                      child: _buildTrendChart(),
                     ),
                     const SizedBox(height: 24),
                     const ScreenSectionHeader(
@@ -365,7 +353,39 @@ class _DomainDetailScreenState extends State<DomainDetailScreen> {
                         ),
                       ),
                   ],
-                ),
+    );
+  }
+
+  Widget _buildBody(PublicationProvider provider, int totalCount) {
+    final insight = _insight;
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    if (_error != null && insight == null) {
+      return _buildErrorState();
+    }
+    return _buildLoadedBody(provider, totalCount, insight);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<PublicationProvider>();
+    final totalCount =
+        _papersTotal > 0 ? _papersTotal : widget.domain.count;
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          widget.domain.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      body: _buildBody(provider, totalCount),
     );
   }
 }

@@ -126,9 +126,9 @@ class _TopicTrendAnalyticsPanelState extends State<TopicTrendAnalyticsPanel> {
         ),
         const SizedBox(height: 12),
         if (loading && yearlyData.isEmpty)
-          MockupCard(
+          const MockupCard(
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 32),
+              padding: EdgeInsets.symmetric(vertical: 32),
               child: Center(
                 child: SizedBox(
                   width: 22,

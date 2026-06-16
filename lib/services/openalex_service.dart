@@ -41,6 +41,7 @@ class OpenAlexService {
   static const int _maxRetries = 4;
   static const Duration _requestTimeout = Duration(seconds: 45);
   static const Set<int> _retryStatusCodes = {429, 502, 503, 504};
+  static const String _sortByCitationsDesc = 'cited_by_count:desc';
 
   /// OpenAlex cho tối đa 100 bài/request; app hiển thị 20/trang cho UX
   static const int _perPage = 100;
@@ -349,7 +350,7 @@ class OpenAlexService {
     final page = await _fetchWorksPage(
       {
         'filter': 'ids.openalex:${shortIds.join('|')}',
-        'sort': 'cited_by_count:desc',
+        'sort': _sortByCitationsDesc,
       },
       page: 1,
       perPage: limit.clamp(1, _perPage),
@@ -647,7 +648,7 @@ class OpenAlexService {
     }
 
     return {
-      'sort': 'cited_by_count:desc',
+      'sort': _sortByCitationsDesc,
       'filter': filter,
     };
   }
@@ -660,7 +661,7 @@ class OpenAlexService {
     if (search != null && search.trim().isNotEmpty) {
       return {
         'search': search.trim(),
-        'sort': 'cited_by_count:desc',
+        'sort': _sortByCitationsDesc,
       };
     }
 
@@ -670,7 +671,7 @@ class OpenAlexService {
     }
 
     return {
-      'sort': 'cited_by_count:desc',
+      'sort': _sortByCitationsDesc,
       'filter': filter,
     };
   }
@@ -681,7 +682,7 @@ class OpenAlexService {
     bool globalInfluential = false,
   }) {
     return {
-      'sort': 'cited_by_count:desc',
+      'sort': _sortByCitationsDesc,
       'filter': _yearFilter(
         year: year,
         search: search,
@@ -712,7 +713,7 @@ class OpenAlexService {
     int perPage = listPageSize,
   }) {
     final params = <String, String>{
-      'sort': 'cited_by_count:desc',
+      'sort': _sortByCitationsDesc,
       'filter': filter,
     };
 
@@ -890,12 +891,12 @@ class OpenAlexService {
     final total = (meta['count'] as num?)?.toInt() ?? results.length;
 
     final publications = results
-        .map(
+          .map(
           (item) => Publication.fromJson(
             Map<String, dynamic>.from(item as Map),
           ),
-        )
-        .toList();
+          )
+          .toList();
 
     return OpenAlexWorksResult(
       publications: publications,
@@ -912,54 +913,40 @@ class OpenAlexService {
 
     for (var attempt = 0; attempt < _maxRetries; attempt++) {
       try {
-        final response = await http
-            .get(
-              url,
-              headers: const {
-                'Accept': 'application/json',
-                'User-Agent': 'JournalTrendAnalyzer/1.0 (PRM393 Lab2)',
-              },
-            )
-            .timeout(_requestTimeout);
-
+        final response = await _sendGetRequest(url);
         lastResponse = response;
 
         if (response.statusCode == 200) {
           return jsonDecode(response.body) as Map<String, dynamic>;
         }
 
-        if (_retryStatusCodes.contains(response.statusCode) &&
-            attempt < _maxRetries - 1) {
+        if (_canRetryHttpStatus(response.statusCode, attempt)) {
           await _backoff(attempt);
           continue;
         }
-
         break;
       } on TimeoutException {
-        if (attempt < _maxRetries - 1) {
-          await _backoff(attempt);
-          continue;
+        if (!_canRetryAttempt(attempt)) {
+          throw OpenAlexException(
+            'OpenAlex khong phan hoi (timeout). Server co the dang qua tai - '
+            'thu doi Wi-Fi/4G hoac bam Retry.',
+          );
         }
-        throw OpenAlexException(
-          'OpenAlex không phản hồi (timeout). Server có thể đang quá tải — '
-          'thử đổi Wi‑Fi/4G hoặc bấm Retry.',
-        );
+        await _backoff(attempt);
       } on SocketException {
-        if (attempt < _maxRetries - 1) {
-          await _backoff(attempt);
-          continue;
+        if (!_canRetryAttempt(attempt)) {
+          throw OpenAlexException(
+            'Khong ket noi duoc OpenAlex. Kiem tra internet tren thiet bi.',
+          );
         }
-        throw OpenAlexException(
-          'Không kết nối được OpenAlex. Kiểm tra internet trên thiết bị.',
-        );
+        await _backoff(attempt);
       } on http.ClientException catch (e) {
-        if (attempt < _maxRetries - 1) {
-          await _backoff(attempt);
-          continue;
+        if (!_canRetryAttempt(attempt)) {
+          throw OpenAlexException(
+            'Loi mang khi goi OpenAlex: ${e.message}',
+          );
         }
-        throw OpenAlexException(
-          'Lỗi mạng khi gọi OpenAlex: ${e.message}',
-        );
+        await _backoff(attempt);
       }
     }
 
@@ -968,8 +955,26 @@ class OpenAlexService {
     }
 
     throw OpenAlexException(
-      'Không tải được dữ liệu từ OpenAlex. Thử lại sau vài phút.',
+      'Khong tai duoc du lieu tu OpenAlex. Thu lai sau vai phut.',
     );
+  }
+
+  Future<http.Response> _sendGetRequest(Uri url) {
+    return http
+        .get(
+          url,
+          headers: const {
+            'Accept': 'application/json',
+            'User-Agent': 'JournalTrendAnalyzer/1.0 (PRM393 Lab2)',
+          },
+        )
+        .timeout(_requestTimeout);
+  }
+
+  bool _canRetryAttempt(int attempt) => attempt < _maxRetries - 1;
+
+  bool _canRetryHttpStatus(int statusCode, int attempt) {
+    return _retryStatusCodes.contains(statusCode) && _canRetryAttempt(attempt);
   }
 
   /// Chờ tăng dần giữa các lần retry (1.5s, 3s, 4.5s…).

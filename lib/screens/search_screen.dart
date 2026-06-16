@@ -70,6 +70,46 @@ class _SearchScreenState extends State<SearchScreen> {
     super.dispose();
   }
 
+  Widget? _buildSearchSuffixIcon(bool showSearchLoading) {
+    if (showSearchLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(12),
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    return IconButton(
+      icon: const Icon(Icons.arrow_forward, size: 20),
+      onPressed: () => _search(),
+    );
+  }
+
+  Widget _buildExpandedContent({
+    required PublicationProvider provider,
+    required bool showSearchLoading,
+    required bool inTopicScope,
+    required TopicSnapshot? snapshot,
+  }) {
+    if (showSearchLoading) {
+      return SearchLoadingView(query: provider.currentTopic);
+    }
+    if (inTopicScope) {
+      return _ExploreResults(
+        provider: provider,
+        snapshot: snapshot,
+        loadingInsights: provider.isTrendLoading,
+      );
+    }
+    return _ExploreSuggestions(
+      onSearch: _search,
+      loadingPapers: provider.isSearchLoading,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PublicationProvider>();
@@ -100,19 +140,7 @@ class _SearchScreenState extends State<SearchScreen> {
               decoration: InputDecoration(
                 hintText: 'Search research topics...',
                 prefixIcon: const Icon(Icons.search, size: 20),
-                suffixIcon: showSearchLoading
-                    ? const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    : IconButton(
-                        icon: const Icon(Icons.arrow_forward, size: 20),
-                        onPressed: showSearchLoading ? null : () => _search(),
-                      ),
+                suffixIcon: _buildSearchSuffixIcon(showSearchLoading),
               ),
             ),
           ),
@@ -164,20 +192,12 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
           Expanded(
-            child: showSearchLoading
-                ? SearchLoadingView(
-                    query: provider.currentTopic,
-                  )
-                : inTopicScope
-                    ? _ExploreResults(
-                        provider: provider,
-                        snapshot: snapshot,
-                        loadingInsights: provider.isTrendLoading,
-                      )
-                    : _ExploreSuggestions(
-                        onSearch: _search,
-                        loadingPapers: loadingPapers,
-                      ),
+            child: _buildExpandedContent(
+              provider: provider,
+              showSearchLoading: showSearchLoading,
+              inTopicScope: inTopicScope,
+              snapshot: snapshot,
+            ),
           ),
         ],
       ),

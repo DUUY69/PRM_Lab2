@@ -131,43 +131,35 @@ class _JournalDetailScreenState extends State<JournalDetailScreen> {
     return _papers.fold<int>(0, (sum, p) => sum + p.citations) / _papers.length;
   }
 
-  /// UI tương tự AuthorDetail nhưng section cuối là Top Authors.
-  @override
-  Widget build(BuildContext context) {
-    final totalCount =
-        _totalCount > 0 ? _totalCount : widget.journal.count;
-    final insight = _insight;
+  Widget _buildTrendChart() {
+    if (_trend.isEmpty) {
+      return const Text(
+        'No trend data for this journal.',
+        style: TextStyle(color: AppColors.textSecondary),
+      );
+    }
+    return TrendChart(yearlyData: _trend);
+  }
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          widget.journal.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+  Widget _buildErrorState() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(_error!),
+          TextButton(
+            onPressed: _loadInitial,
+            child: const Text('Retry'),
+          ),
+        ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-          : _error != null && _papers.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_error!),
-                      TextButton(
-                        onPressed: _loadInitial,
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
+    );
+  }
+
+  Widget _buildLoadedBody(int totalCount, TrendInsight? insight) {
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
                     Text(
                       widget.journal.name,
                       style: const TextStyle(
@@ -248,14 +240,7 @@ class _JournalDetailScreenState extends State<JournalDetailScreen> {
                     const SizedBox(height: 12),
                     MockupCard(
                       padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
-                      child: _trend.isEmpty
-                          ? const Text(
-                              'No trend data for this journal.',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                            )
-                          : TrendChart(yearlyData: _trend),
+                      child: _buildTrendChart(),
                     ),
                     const SizedBox(height: 24),
                     const ScreenSectionHeader(
@@ -313,7 +298,37 @@ class _JournalDetailScreenState extends State<JournalDetailScreen> {
                         ),
                       ),
                   ],
-                ),
+    );
+  }
+
+  Widget _buildBody(int totalCount, TrendInsight? insight) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    if (_error != null && _papers.isEmpty) {
+      return _buildErrorState();
+    }
+    return _buildLoadedBody(totalCount, insight);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final totalCount =
+        _totalCount > 0 ? _totalCount : widget.journal.count;
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          widget.journal.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      body: _buildBody(totalCount, _insight),
     );
   }
 }

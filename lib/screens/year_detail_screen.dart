@@ -107,6 +107,13 @@ class _YearDetailScreenState extends State<YearDetailScreen> {
     }
   }
 
+  String get _topJournalLabel {
+    if (_papers.isEmpty) {
+      return 'N/A';
+    }
+    return _papers.first.journal.split(' ').first;
+  }
+
   @override
   Widget build(BuildContext context) {
     final openAlexCount = widget.provider.openAlexCountForYear(widget.year);
@@ -143,9 +150,7 @@ class _YearDetailScreenState extends State<YearDetailScreen> {
                       Expanded(
                         child: _YearStat(
                           label: 'Top Journal',
-                          value: _papers.isEmpty
-                              ? 'N/A'
-                              : _papers.first.journal.split(' ').first,
+                          value: _topJournalLabel,
                         ),
                       ),
                     ],
