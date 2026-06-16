@@ -15,11 +15,8 @@ import '../theme/app_theme.dart';
 import '../utils/count_format.dart';
 import '../utils/research_insights.dart';
 import '../widgets/app_logo.dart';
-import '../widgets/insight_widgets.dart';
-import '../widgets/load_more_footer.dart';
-import '../widgets/publication_card.dart';
+import '../widgets/entity_detail_sections.dart';
 import '../widgets/ranked_list_widgets.dart';
-import '../widgets/trend_chart.dart';
 import 'author_detail_screen.dart';
 
 /// Màn chi tiết **journal/source** — filter `primary_location.source.id`.
@@ -131,173 +128,81 @@ class _JournalDetailScreenState extends State<JournalDetailScreen> {
     return _papers.fold<int>(0, (sum, p) => sum + p.citations) / _papers.length;
   }
 
-  Widget _buildTrendChart() {
-    if (_trend.isEmpty) {
-      return const Text(
-        'No trend data for this journal.',
-        style: TextStyle(color: AppColors.textSecondary),
-      );
-    }
-    return TrendChart(yearlyData: _trend);
-  }
-
-  Widget _buildErrorState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(_error!),
-          TextButton(
-            onPressed: _loadInitial,
-            child: const Text('Retry'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildLoadedBody(int totalCount, TrendInsight? insight) {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-                    Text(
-                      widget.journal.name,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
+        Text(
+          widget.journal.name,
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'OpenAlex journal / source',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 16),
+        EntityStatsCard(
+          totalCount: totalCount,
+          avgCitations: _avgCitations,
+          loadedCount: _papers.length,
+        ),
+        if (insight != null) EntityGrowthInsightCard(insight: insight),
+        EntityTrendSection(
+          title: 'Publication Trend',
+          subtitle: 'Works in this journal · OpenAlex',
+          trend: _trend,
+          emptyMessage: 'No trend data for this journal.',
+        ),
+        EntityPapersSection(
+          title: 'Top Papers',
+          subtitle: 'Most cited in this journal',
+          papers: _papers,
+          totalCount: totalCount,
+          isLoadingMore: _loadingMore,
+          hasMore: _hasMore,
+          onLoadMore: _loadMore,
+          emptyMessage: 'No papers found on OpenAlex.',
+        ),
+        const SizedBox(height: 24),
+        const ScreenSectionHeader(
+          title: 'Top Authors',
+          subtitle: 'Most publications in this journal',
+        ),
+        const SizedBox(height: 8),
+        if (_authors.isEmpty)
+          const Text(
+            'No author data for this journal.',
+            style: TextStyle(color: AppColors.textSecondary),
+          )
+        else
+          MockupCard(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Column(
+              children: _authors.asMap().entries.map((entry) {
+                final author = entry.value;
+                return RankedMetricTile(
+                  rank: entry.key + 1,
+                  title: author.name,
+                  metricValue: formatOpenAlexCount(author.count),
+                  metricLabel: 'publications',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AuthorDetailScreen(
+                        author: author,
+                        provider: widget.provider,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'OpenAlex journal / source',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(height: 16),
-                    MockupCard(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _StatCol(
-                              label: 'Publications',
-                              value: formatOpenAlexCount(totalCount),
-                            ),
-                          ),
-                          Expanded(
-                            child: _StatCol(
-                              label: 'Avg Citations',
-                              value: _avgCitations.toStringAsFixed(0),
-                              hint: 'loaded papers',
-                            ),
-                          ),
-                          Expanded(
-                            child: _StatCol(
-                              label: 'Loaded',
-                              value: '${_papers.length}',
-                              hint: 'on screen',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (insight != null) ...[
-                      const SizedBox(height: 16),
-                      MockupCard(
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    ResearchInsights.formatGrowth(
-                                      insight.periodGrowthPercent,
-                                    ),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                  const Text(
-                                    'Publication growth',
-                                    style: TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            MomentumBadge(level: insight.momentum),
-                          ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    const ScreenSectionHeader(
-                      title: 'Publication Trend',
-                      subtitle: 'Works in this journal · OpenAlex',
-                    ),
-                    const SizedBox(height: 12),
-                    MockupCard(
-                      padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
-                      child: _buildTrendChart(),
-                    ),
-                    const SizedBox(height: 24),
-                    const ScreenSectionHeader(
-                      title: 'Top Papers',
-                      subtitle: 'Most cited in this journal',
-                    ),
-                    const SizedBox(height: 8),
-                    if (_papers.isEmpty)
-                      const Text('No papers found on OpenAlex.')
-                    else ...[
-                      ..._papers.map(
-                        (paper) => PublicationCard(publication: paper),
-                      ),
-                      LoadMoreFooter(
-                        loadedCount: _papers.length,
-                        totalCount: totalCount,
-                        isLoading: _loadingMore,
-                        hasMore: _hasMore,
-                        onLoadMore: _loadMore,
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    const ScreenSectionHeader(
-                      title: 'Top Authors',
-                      subtitle: 'Most publications in this journal',
-                    ),
-                    const SizedBox(height: 8),
-                    if (_authors.isEmpty)
-                      const Text(
-                        'No author data for this journal.',
-                        style: TextStyle(color: AppColors.textSecondary),
-                      )
-                    else
-                      MockupCard(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        child: Column(
-                          children: _authors.asMap().entries.map((entry) {
-                            final author = entry.value;
-                            return RankedMetricTile(
-                              rank: entry.key + 1,
-                              title: author.name,
-                              metricValue: formatOpenAlexCount(author.count),
-                              metricLabel: 'publications',
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => AuthorDetailScreen(
-                                    author: author,
-                                    provider: widget.provider,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                  ],
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
     );
   }
 
@@ -306,7 +211,7 @@ class _JournalDetailScreenState extends State<JournalDetailScreen> {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2));
     }
     if (_error != null && _papers.isEmpty) {
-      return _buildErrorState();
+      return EntityDetailErrorView(message: _error!, onRetry: _loadInitial);
     }
     return _buildLoadedBody(totalCount, insight);
   }
@@ -329,53 +234,6 @@ class _JournalDetailScreenState extends State<JournalDetailScreen> {
         ),
       ),
       body: _buildBody(totalCount, _insight),
-    );
-  }
-}
-
-/// Cột stat nhỏ (Publications / Avg Citations / Loaded).
-class _StatCol extends StatelessWidget {
-  final String label;
-  final String value;
-  final String? hint;
-
-  const _StatCol({
-    required this.label,
-    required this.value,
-    this.hint,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 11,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 15,
-          ),
-        ),
-        if (hint != null) ...[
-          const SizedBox(height: 2),
-          Text(
-            hint!,
-            style: const TextStyle(
-              color: AppColors.textTertiary,
-              fontSize: 9,
-            ),
-          ),
-        ],
-      ],
     );
   }
 }

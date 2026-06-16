@@ -32,9 +32,11 @@ import 'openalex_exception.dart';
 
 /// Service chịu trách nhiệm giao tiếp với OpenAlex API
 class OpenAlexService {
-  OpenAlexService(this._config);
+  OpenAlexService(this._config, {http.Client? httpClient})
+      : _httpClient = httpClient ?? http.Client();
 
   final OpenAlexConfig _config;
+  final http.Client _httpClient;
 
   String get _apiKey => _config.apiKey;
 
@@ -958,7 +960,7 @@ class OpenAlexService {
   }
 
   Future<http.Response> _sendGetRequest(Uri url) {
-    return http
+    return _httpClient
         .get(
           url,
           headers: const {

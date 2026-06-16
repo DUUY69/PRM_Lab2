@@ -37,4 +37,16 @@ void main() {
 
     expect(growth, greaterThan(100));
   });
+
+  test('formatGrowth renders signed percentage', () {
+    expect(ResearchInsights.formatGrowth(25), '+25%');
+    expect(ResearchInsights.formatGrowth(-4.2), '-4%');
+  });
+
+  test('analyzeTrend returns empty insight for insufficient data', () {
+    expect(
+      ResearchInsights.analyzeTrend(volumeByYear: {2024: 10}),
+      TrendInsight.empty,
+    );
+  });
 }
