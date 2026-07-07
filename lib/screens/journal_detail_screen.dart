@@ -4,7 +4,7 @@ import '../models/openalex_ranked_entity.dart';
 import '../models/openalex_works_result.dart';
 import '../models/publication.dart';
 import '../models/research_insight.dart';
-import '../providers/publication_provider.dart';
+import '../viewmodels/publication_viewmodel.dart';
 import '../theme/app_theme.dart';
 import '../utils/count_format.dart';
 import '../utils/research_insights.dart';
@@ -15,10 +15,11 @@ import '../widgets/publication_card.dart';
 import '../widgets/ranked_list_widgets.dart';
 import '../widgets/trend_chart.dart';
 import 'author_detail_screen.dart';
+import '../services/analytics_service.dart';
 
 class JournalDetailScreen extends StatefulWidget {
   final OpenAlexRankedEntity journal;
-  final PublicationProvider provider;
+  final PublicationViewModel provider;
 
   const JournalDetailScreen({
     super.key,
@@ -45,6 +46,9 @@ class _JournalDetailScreenState extends State<JournalDetailScreen> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.logViewJournal(
+        widget.journal.name,
+      );
     _loadInitial();
   }
 

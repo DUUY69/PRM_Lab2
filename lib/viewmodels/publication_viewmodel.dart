@@ -8,10 +8,11 @@ import '../services/openalex_exception.dart';
 import '../services/openalex_service.dart';
 import '../utils/count_format.dart';
 import '../utils/research_insights.dart';
+import '../services/analytics_service.dart';
 
 enum AnalysisScope { global, topic }
 
-class PublicationProvider extends ChangeNotifier {
+class PublicationViewModel extends ChangeNotifier {
   final OpenAlexService _openAlexService = OpenAlexService();
 
   static const globalTopicLabel = 'Global Research Overview';
@@ -156,6 +157,7 @@ class PublicationProvider extends ChangeNotifier {
       totalOnOpenAlex = works.totalOnOpenAlex;
       searchListPage = 1;
       searchHasMore = works.hasMore(publications.length);
+      await AnalyticsService.logSearchTopic(topic);
     } catch (e) {
       if (generation != _searchGeneration) return;
 

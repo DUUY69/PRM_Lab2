@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/publication_provider.dart';
+import '../viewmodels/publication_viewmodel.dart';
 import '../theme/app_theme.dart';
 import '../utils/research_insights.dart';
 import '../widgets/app_logo.dart';
@@ -38,7 +38,7 @@ class TrendScreen extends StatefulWidget {
 class _TrendScreenState extends State<TrendScreen> {
   TrendMetric _metric = TrendMetric.publications;
 
-  Map<int, int> _dataForMetric(PublicationProvider provider) {
+  Map<int, int> _dataForMetric(PublicationViewModel provider) {
     switch (_metric) {
       case TrendMetric.publications:
         return provider.yearlyTrendFromOpenAlex;
@@ -62,7 +62,7 @@ class _TrendScreenState extends State<TrendScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<PublicationProvider>();
+    final provider = context.watch<PublicationViewModel>();
 
     if (provider.isDashboardLoading && !provider.hasData) {
       return const SafeArea(

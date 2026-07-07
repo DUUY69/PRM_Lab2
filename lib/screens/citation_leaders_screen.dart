@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/publication_provider.dart';
+import '../viewmodels/publication_viewmodel.dart';
 import '../utils/count_format.dart';
 import '../widgets/ranked_list_widgets.dart';
 import 'author_detail_screen.dart';
@@ -45,7 +45,7 @@ class CitationLeadersScreen extends StatelessWidget {
 class _PapersTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final papers = context.watch<PublicationProvider>().topPapersOpenAlex;
+    final papers = context.watch<PublicationViewModel>().topPapersOpenAlex;
 
     if (papers.isEmpty) {
       return const Center(child: Text('No papers from OpenAlex'));
@@ -80,7 +80,7 @@ class _PapersTab extends StatelessWidget {
 class _AuthorsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<PublicationProvider>();
+    final provider = context.watch<PublicationViewModel>();
     final authors = provider.rankedAuthors;
 
     if (authors.isEmpty) {
@@ -116,7 +116,7 @@ class _AuthorsTab extends StatelessWidget {
 class _JournalsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<PublicationProvider>();
+    final provider = context.watch<PublicationViewModel>();
     final journals = provider.rankedJournals;
 
     if (journals.isEmpty) {

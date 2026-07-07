@@ -692,7 +692,7 @@ class OpenAlexService {
     final queryParams = <String, String>{
       'group_by': groupBy,
       'filter': filter,
-      'mailto': 'prm393.lab2@example.com',
+      'mailto': 'datnpse182125@fpt.edu.vn',
     };
 
     if (search != null && search.trim().isNotEmpty) {
@@ -788,7 +788,7 @@ class OpenAlexService {
       'per-page': '$perPage',
       'page': '$page',
       'select': baseParams['select'] ?? _selectFields,
-      'mailto': 'prm393.lab2@example.com',
+      'mailto': 'datnpse182125@fpt.edu.vn',
     };
 
     if (_apiKey.isNotEmpty) {

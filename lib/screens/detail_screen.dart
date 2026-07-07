@@ -6,10 +6,11 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/openalex_ranked_entity.dart';
 import '../models/publication.dart';
 import '../models/publication_author.dart';
-import '../providers/publication_provider.dart';
+import '../viewmodels/publication_viewmodel.dart';
 import '../theme/app_theme.dart';
 import '../utils/count_format.dart';
 import 'author_detail_screen.dart';
+import '../services/analytics_service.dart';
 
 class DetailScreen extends StatefulWidget {
   final Publication publication;
@@ -34,6 +35,10 @@ class _DetailScreenState extends State<DetailScreen> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.logViewPublication(
+        title: widget.publication.title,
+        year: widget.publication.year,
+      );
     _loadRelatedWorks();
   }
 
@@ -44,7 +49,7 @@ class _DetailScreenState extends State<DetailScreen> {
     setState(() => _loadingRelated = true);
 
     try {
-      final provider = context.read<PublicationProvider>();
+      final provider = context.read<PublicationViewModel>();
       final related = await provider.loadRelatedWorks(publication);
       if (!mounted) return;
       setState(() {
@@ -61,13 +66,25 @@ class _DetailScreenState extends State<DetailScreen> {
     final uri = Uri.tryParse(url);
     if (uri == null) return;
 
-    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!launched && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open link')),
+    final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
       );
+
+      if (launched) {
+        if (url.contains('doi.org')) {
+          await AnalyticsService.logOpenDoi(
+            doi: url,
+          );
+        }
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open link'),
+          ),
+        );
+      }
     }
-  }
 
   Future<void> _copyDoi(Publication publication) async {
     final text = publication.displayDoi;
@@ -83,7 +100,7 @@ class _DetailScreenState extends State<DetailScreen> {
   void _openAuthor(PublicationAuthor author) {
     if (!author.hasOpenAlexId) return;
 
-    final provider = context.read<PublicationProvider>();
+    final provider = context.read<PublicationViewModel>();
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -184,7 +201,13 @@ class _DetailScreenState extends State<DetailScreen> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => _openUrl(publication.readUrl!),
+                  onPressed: () async {
+                      await AnalyticsService.logOpenPaper(
+                        title: publication.title,
+                      );
+
+                      await _openUrl(publication.readUrl!);
+                    },
                   icon: const Icon(Icons.menu_book_outlined, size: 18),
                   label: Text(
                     publication.openAccessUrl != null

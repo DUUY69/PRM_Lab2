@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/openalex_ranked_entity.dart';
-import '../providers/publication_provider.dart';
+import '../viewmodels/publication_viewmodel.dart';
 import '../theme/app_theme.dart';
 import '../utils/count_format.dart';
 import '../widgets/app_logo.dart';
@@ -13,7 +13,7 @@ class ResearchDomainsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<PublicationProvider>();
+    final provider = context.watch<PublicationViewModel>();
     final domains = provider.trendingAreas;
 
     return Scaffold(

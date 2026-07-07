@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import 'package:lab2/theme/app_theme.dart';
-import 'package:lab2/providers/app_navigation_provider.dart';
-import 'package:lab2/providers/publication_provider.dart';
+import 'package:lab2/viewmodels/app_navigation_viewmodel.dart';
+import 'package:lab2/viewmodels/publication_viewmodel.dart';
 import 'package:lab2/screens/main_shell.dart';
 
 void main() {
@@ -12,8 +12,8 @@ void main() {
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          ChangeNotifierProvider(create: (_) => PublicationProvider()),
-          ChangeNotifierProvider(create: (_) => AppNavigationProvider()),
+          ChangeNotifierProvider(create: (_) => PublicationViewModel()),
+          ChangeNotifierProvider(create: (_) => AppNavigationViewModel()),
         ],
         child: MaterialApp(
           theme: buildAppTheme(),

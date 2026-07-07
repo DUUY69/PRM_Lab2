@@ -6,7 +6,7 @@ import '../models/openalex_ranked_entity.dart';
 import '../models/openalex_works_result.dart';
 import '../models/publication.dart';
 import '../models/research_insight.dart';
-import '../providers/publication_provider.dart';
+import '../viewmodels/publication_viewmodel.dart';
 import '../theme/app_theme.dart';
 import '../utils/count_format.dart';
 import '../utils/research_insights.dart';
@@ -54,7 +54,7 @@ class _DomainDetailScreenState extends State<DomainDetailScreen> {
     });
 
     try {
-      final provider = context.read<PublicationProvider>();
+      final provider = context.read<PublicationViewModel>();
       final results = await Future.wait([
         provider.loadConceptTrend(widget.domain),
         provider.loadConceptTopAuthors(widget.domain),
@@ -96,7 +96,7 @@ class _DomainDetailScreenState extends State<DomainDetailScreen> {
     setState(() => _loadingMorePapers = true);
 
     try {
-      final provider = context.read<PublicationProvider>();
+      final provider = context.read<PublicationViewModel>();
       final result = await provider.loadConceptWorksPage(
         widget.domain,
         _papersPage + 1,
@@ -119,7 +119,7 @@ class _DomainDetailScreenState extends State<DomainDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<PublicationProvider>();
+    final provider = context.watch<PublicationViewModel>();
     final insight = _insight;
     final totalCount =
         _papersTotal > 0 ? _papersTotal : widget.domain.count;

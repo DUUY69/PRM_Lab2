@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/openalex_ranked_entity.dart';
-import '../providers/publication_provider.dart';
+import '../viewmodels/publication_viewmodel.dart';
 import '../utils/count_format.dart';
 import 'journal_detail_screen.dart';
 
@@ -12,7 +12,7 @@ class TopJournalsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<PublicationProvider>();
+    final provider = context.watch<PublicationViewModel>();
     final topJournals = provider.rankedJournals;
 
     return Scaffold(
@@ -49,7 +49,7 @@ class TopJournalsScreen extends StatelessWidget {
 
   void _openJournal(
     BuildContext context,
-    PublicationProvider provider,
+    PublicationViewModel provider,
     OpenAlexRankedEntity journal,
   ) {
     Navigator.push(

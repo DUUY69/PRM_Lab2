@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/app_navigation_provider.dart';
-import '../providers/publication_provider.dart';
+import '../viewmodels/app_navigation_viewmodel.dart';
+import '../viewmodels/publication_viewmodel.dart';
 import 'about_screen.dart';
 import 'overview_screen.dart';
 import 'search_screen.dart';
 import 'trend_screen.dart';
+import 'profile_screen.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -21,13 +22,15 @@ class _MainShellState extends State<MainShell> {
     TrendScreen(),
     SearchScreen(),
     AboutScreen(),
+    ProfileScreen(),
+
   ];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<PublicationProvider>();
+      final provider = context.read<PublicationViewModel>();
       if (!provider.hasData && !provider.isDashboardLoading) {
         provider.loadDefaultDashboard();
       }
@@ -36,7 +39,7 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final nav = context.watch<AppNavigationProvider>();
+    final nav = context.watch<AppNavigationViewModel>();
 
     return Scaffold(
       body: IndexedStack(
@@ -46,7 +49,7 @@ class _MainShellState extends State<MainShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: nav.tabIndex,
         onDestinationSelected: (index) {
-          context.read<AppNavigationProvider>().goToTab(index);
+          context.read<AppNavigationViewModel>().goToTab(index);
         },
         destinations: const [
           NavigationDestination(
@@ -69,6 +72,12 @@ class _MainShellState extends State<MainShell> {
             selectedIcon: Icon(Icons.info),
             label: 'About',
           ),
+
+          NavigationDestination(
+    icon: Icon(Icons.person_outline),
+    selectedIcon: Icon(Icons.person),
+    label: 'Profile',
+  ),
         ],
       ),
     );

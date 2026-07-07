@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../models/research_insight.dart';
-import '../providers/publication_provider.dart';
+import '../viewmodels/publication_viewmodel.dart';
 import '../theme/app_theme.dart';
 import '../utils/count_format.dart';
 import '../utils/research_insights.dart';
@@ -37,7 +37,7 @@ class _SearchScreenState extends State<SearchScreen> {
     final topic = _searchController.text.trim();
     if (topic.isEmpty) return;
 
-    await context.read<PublicationProvider>().searchPublications(topic);
+    await context.read<PublicationViewModel>().searchPublications(topic);
   }
 
   @override
@@ -48,7 +48,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<PublicationProvider>();
+    final provider = context.watch<PublicationViewModel>();
     final inTopicScope = !provider.isGlobalScope;
     final snapshot = provider.topicSnapshot;
     final loadingPapers = provider.isSearchLoading;
@@ -127,7 +127,7 @@ class _SearchScreenState extends State<SearchScreen> {
 }
 
 class _ExploreResults extends StatelessWidget {
-  final PublicationProvider provider;
+  final PublicationViewModel provider;
   final TopicSnapshot? snapshot;
   final bool loadingPapers;
   final bool loadingInsights;

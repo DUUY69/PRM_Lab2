@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/publication_provider.dart';
+import '../viewmodels/publication_viewmodel.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import 'main_shell.dart';
@@ -21,7 +21,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _bootstrap() async {
-    final provider = context.read<PublicationProvider>();
+    final provider = context.read<PublicationViewModel>();
     await provider.loadDefaultDashboard();
     await Future<void>.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;

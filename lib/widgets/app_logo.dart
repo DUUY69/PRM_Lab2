@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/publication_provider.dart';
+import '../viewmodels/publication_viewmodel.dart';
 import '../theme/app_theme.dart';
 
 class AppLogo extends StatelessWidget {
@@ -44,7 +44,7 @@ class JournalAiAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = showRefresh ? context.watch<PublicationProvider>() : null;
+    final provider = showRefresh ? context.watch<PublicationViewModel>() : null;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 12, 8),
