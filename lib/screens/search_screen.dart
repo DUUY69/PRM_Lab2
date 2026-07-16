@@ -1,3 +1,10 @@
+﻿// =============================================================================
+// search_screen.dart — EXPLORE / SEARCH (màn cũ, mở từ Home)
+// =============================================================================
+// Search topic → provider.searchPublications → snapshot + load more 20 bài.
+// Recent Searches chips khi chưa search. SearchLoadingView khi chờ bài đầu.
+// =============================================================================
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,17 +12,20 @@ import '../models/research_insight.dart';
 import '../viewmodels/publication_viewmodel.dart';
 import '../theme/app_theme.dart';
 import '../utils/count_format.dart';
+import '../utils/overview_time_range.dart';
 import '../utils/research_insights.dart';
 import '../widgets/app_logo.dart';
 import '../widgets/error_banner.dart';
 import '../widgets/insight_widgets.dart';
+import '../widgets/explore_topic_charts.dart';
 import '../widgets/load_more_footer.dart';
 import '../widgets/publication_card.dart';
-import 'author_detail_screen.dart';
-import 'journal_detail_screen.dart';
+import '../widgets/search_loading_view.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  final String? initialQuery;
+
+  const SearchScreen({super.key, this.initialQuery});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -32,6 +42,19 @@ class _SearchScreenState extends State<SearchScreen> {
     'Generative AI',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    final preset = widget.initialQuery?.trim();
+    if (preset != null && preset.isNotEmpty) {
+      _searchController.text = preset;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PublicationViewModel>().loadRecentSearches();
+    });
+  }
+
+  /// Gọi provider.searchPublications — presetTopic dùng cho chip gợi ý
   Future<void> _search([String? presetTopic]) async {
     if (presetTopic != null) _searchController.text = presetTopic;
     final topic = _searchController.text.trim();
@@ -46,112 +69,188 @@ class _SearchScreenState extends State<SearchScreen> {
     super.dispose();
   }
 
+  Widget? _buildSearchSuffixIcon(bool showSearchLoading) {
+    if (showSearchLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(12),
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    return IconButton(
+      icon: const Icon(Icons.arrow_forward, size: 20),
+      onPressed: () => _search(),
+    );
+  }
+
+  Widget _buildExpandedContent({
+    required PublicationViewModel provider,
+    required bool showSearchLoading,
+    required bool inTopicScope,
+  }) {
+    if (showSearchLoading) {
+      return SearchLoadingView(query: provider.currentTopic);
+    }
+    if (inTopicScope) {
+      return _ExploreResults(
+        provider: provider,
+        loadingInsights: provider.isTrendLoading,
+      );
+    }
+    return _ExploreSuggestions(
+      onSearch: _search,
+      loadingPapers: provider.isSearchLoading,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PublicationViewModel>();
-    final inTopicScope = !provider.isGlobalScope;
-    final snapshot = provider.topicSnapshot;
+    final inTopicScope = !provider.isGlobalScope; // đã search hay chưa
     final loadingPapers = provider.isSearchLoading;
+    // Chỉ full-screen loading khi chưa có bài nào (search mới)
+    final showSearchLoading =
+        loadingPapers && provider.publications.isEmpty;
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Explore'),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, size: 20),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
+      ),
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: Text(
-                'Explore',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            child: TextField(
+              controller: _searchController,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _search(),
+              decoration: InputDecoration(
+                hintText: 'Search research topics...',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _buildSearchSuffixIcon(showSearchLoading),
               ),
             ),
+          ),
+          if (provider.errorMessage != null && inTopicScope)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: ErrorBanner(
+                message: provider.errorMessage!,
+                onRetry: () => _search(),
+              ),
+            ),
+          if (!inTopicScope && provider.recentSearches.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
-              child: TextField(
-                controller: _searchController,
-                textInputAction: TextInputAction.search,
-                onSubmitted: (_) => _search(),
-                decoration: InputDecoration(
-                  hintText: 'Search research topics...',
-                  prefixIcon: const Icon(Icons.search, size: 20),
-                  suffixIcon: loadingPapers
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : IconButton(
-                          icon: const Icon(Icons.arrow_forward, size: 20),
-                          onPressed: loadingPapers ? null : () => _search(),
-                        ),
-                ),
-              ),
-            ),
-            if (provider.errorMessage != null && inTopicScope)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                child: ErrorBanner(
-                  message: provider.errorMessage!,
-                  onRetry: () => _search(),
-                ),
-              ),
-            if (inTopicScope)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                child: TextButton(
-                  onPressed: loadingPapers
-                      ? null
-                      : () => provider.loadDefaultDashboard(),
-                  child: const Text('Back to global overview'),
-                ),
-              ),
-            Expanded(
-              child: inTopicScope
-                  ? _ExploreResults(
-                      provider: provider,
-                      snapshot: snapshot,
-                      loadingPapers: loadingPapers,
-                      loadingInsights: provider.isTrendLoading,
-                    )
-                  : _ExploreSuggestions(
-                      onSearch: _search,
-                      loadingPapers: loadingPapers,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Recent Searches',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: provider.recentSearches.map((topic) {
+                      return ActionChip(
+                        label: Text(topic),
+                        onPressed: loadingPapers ? null : () => _search(topic),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
             ),
           ],
-        ),
+          if (inTopicScope)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              child: TextButton(
+                onPressed: showSearchLoading
+                    ? null
+                    : () => provider.loadDefaultDashboard(),
+                child: const Text('Back to global overview'),
+              ),
+            ),
+          Expanded(
+            child: _buildExpandedContent(
+              provider: provider,
+              showSearchLoading: showSearchLoading,
+              inTopicScope: inTopicScope,
+            ),
+          ),
+        ],
+      ),
       ),
     );
   }
 }
 
-class _ExploreResults extends StatelessWidget {
+class _ExploreResults extends StatefulWidget {
   final PublicationViewModel provider;
-  final TopicSnapshot? snapshot;
-  final bool loadingPapers;
   final bool loadingInsights;
 
   const _ExploreResults({
     required this.provider,
-    required this.snapshot,
-    required this.loadingPapers,
     required this.loadingInsights,
   });
 
   @override
+  State<_ExploreResults> createState() => _ExploreResultsState();
+}
+
+class _ExploreResultsState extends State<_ExploreResults> {
+  OverviewTimeRange _timeRange = OverviewTimeRange.fiveYears;
+
+  PublicationViewModel get provider => widget.provider;
+
+  TopicSnapshot? _snapshotForRange() {
+    if (!provider.isTopicInsightsReady) return null;
+    return ResearchInsights.buildTopicSnapshotForRange(
+      topic: provider.currentTopic,
+      totalPublications: provider.totalOnOpenAlex,
+      yearlyTrend: provider.yearlyTrendFromOpenAlex,
+      monthlyTrend: provider.monthlyTrendFromOpenAlex,
+      citationsByYear: provider.citationsByYearOpenAlex,
+      timeRange: _timeRange,
+      topJournal: provider.rankedJournals.isEmpty
+          ? null
+          : provider.rankedJournals.first,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final snap = snapshot;
-    final journals = provider.rankedJournals.take(4).toList();
-    final authors = provider.rankedAuthors.take(4).toList();
-    final showInsights = provider.isTopicInsightsReady && snap != null;
+    final snap = _snapshotForRange();
+    final showInsights = snap != null;
+    final currentYear = DateTime.now().year;
+    final coverageText = _timeRange.coverageLabelWithMonths(
+      currentYear,
+      provider.monthlyTrendFromOpenAlex,
+    );
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
       children: [
-        if (loadingInsights && !showInsights)
+        if (widget.loadingInsights && !showInsights)
           MockupCard(
             child: Row(
               children: [
@@ -183,6 +282,21 @@ class _ExploreResults extends StatelessWidget {
             ),
           )
         else if (showInsights) ...[
+          SegmentedButton<OverviewTimeRange>(
+            segments: OverviewTimeRange.values
+                .map(
+                  (range) => ButtonSegment(
+                    value: range,
+                    label: Text(range.label),
+                  ),
+                )
+                .toList(),
+            selected: {_timeRange},
+            onSelectionChanged: (selection) {
+              setState(() => _timeRange = selection.first);
+            },
+          ),
+          const SizedBox(height: 12),
           MockupCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,6 +306,14 @@ class _ExploreResults extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Khoảng: $coverageText · OpenAlex',
+                  style: const TextStyle(
+                    color: AppColors.textTertiary,
+                    fontSize: 11,
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -204,9 +326,27 @@ class _ExploreResults extends StatelessWidget {
                       ),
                     ),
                     Expanded(
-                      child: _SnapshotStat(
-                        label: 'Growth',
-                        value: ResearchInsights.formatGrowth(snap.growthPercent),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _SnapshotStat(
+                            label: snap.growthLabel,
+                            value: ResearchInsights.formatGrowth(
+                              snap.growthPercent,
+                            ),
+                          ),
+                          if (snap.growthHint != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              snap.growthHint!,
+                              style: const TextStyle(
+                                color: AppColors.textTertiary,
+                                fontSize: 9,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],
@@ -216,8 +356,12 @@ class _ExploreResults extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _SnapshotStat(
-                        label: 'Peak Year',
-                        value: '${snap.peakYear}',
+                        label: _timeRange == OverviewTimeRange.thisYear
+                            ? 'Peak Month'
+                            : 'Peak Year',
+                        value: _timeRange == OverviewTimeRange.thisYear
+                            ? monthShortLabel(snap.peakYear)
+                            : '${snap.peakYear}',
                       ),
                     ),
                     Expanded(
@@ -253,144 +397,22 @@ class _ExploreResults extends StatelessWidget {
           ),
           const SizedBox(height: 20),
         ],
-        if (showInsights && journals.isNotEmpty) ...[
-          const Text(
-            'Top Journals',
-            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 110,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: journals.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final journal = journals[index];
-                return GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => JournalDetailScreen(
-                        journal: journal,
-                        provider: provider,
-                      ),
-                    ),
-                  ),
-                  child: Container(
-                    width: 140,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          journal.name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          formatOpenAlexCount(journal.count),
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 11,
-                          ),
-                        ),
-                        const Text(
-                          'publications',
-                          style: TextStyle(
-                            color: AppColors.textTertiary,
-                            fontSize: 9,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
-        if (showInsights && authors.isNotEmpty) ...[
-          const Text(
-            'Top Authors',
-            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-          ),
-          const SizedBox(height: 8),
-          MockupCard(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Column(
-              children: authors
-                  .map(
-                    (author) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        author.name,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      trailing: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            formatOpenAlexCount(author.count),
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const Text(
-                            'publications',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 9,
-                            ),
-                          ),
-                        ],
-                      ),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AuthorDetailScreen(
-                            author: author,
-                            provider: provider,
-                          ),
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
+        ExploreTopicCharts(provider: provider, timeRange: _timeRange),
+        const SizedBox(height: 20),
         const Text(
           'Publications',
           style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
         ),
+        const SizedBox(height: 4),
+        const Text(
+          'Sorted by relevance (OpenAlex default search ranking)',
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 11,
+          ),
+        ),
         const SizedBox(height: 8),
-        if (loadingPapers && provider.publications.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-          )
-        else if (provider.publications.isEmpty)
+        if (provider.publications.isEmpty)
           const Text(
             'No publications found for this topic.',
             style: TextStyle(color: AppColors.textSecondary),

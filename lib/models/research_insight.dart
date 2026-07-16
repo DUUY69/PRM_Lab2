@@ -1,3 +1,11 @@
+// =============================================================================
+// research_insight.dart — MODEL CHO INSIGHT / SNAPSHOT UI
+// =============================================================================
+// Các class này là KẾT QUẢ TÍNH TOÁN từ ResearchInsights + provider,
+// không parse trực tiếp từ JSON OpenAlex.
+// =============================================================================
+
+/// Mức độ momentum hiển thị badge HIGH / MEDIUM / LOW / DECLINING
 enum MomentumLevel {
   high,
   medium,
@@ -20,6 +28,7 @@ extension MomentumLevelX on MomentumLevel {
   }
 }
 
+/// Kết quả phân tích trend theo năm (Analytics, Growth screen)
 class TrendInsight {
   final double periodGrowthPercent;
   final double yoyGrowthPercent;
@@ -45,6 +54,7 @@ class TrendInsight {
     this.citationNote,
   });
 
+  /// Dùng khi chưa đủ dữ liệu trend
   static const empty = TrendInsight(
     periodGrowthPercent: 0,
     yoyGrowthPercent: 0,
@@ -58,6 +68,7 @@ class TrendInsight {
   );
 }
 
+/// Một concept/domain đang tăng trưởng nhanh (Emerging Topics)
 class TopicGrowthInsight {
   final String id;
   final String name;
@@ -71,16 +82,20 @@ class TopicGrowthInsight {
 
   bool get isDeclining => growthPercent < 0;
 
+  /// Hiển thị +280% hoặc -5%
   String get formattedGrowth {
     final sign = growthPercent >= 0 ? '+' : '';
     return '$sign${growthPercent.round()}%';
   }
 }
 
+/// Card snapshot sau khi user search topic trên Explore
 class TopicSnapshot {
   final String topic;
   final int totalPublications;
   final double growthPercent;
+  final String growthLabel;
+  final String? growthHint;
   final int peakYear;
   final String? topJournal;
   final MomentumLevel momentum;
@@ -90,6 +105,8 @@ class TopicSnapshot {
     required this.topic,
     required this.totalPublications,
     required this.growthPercent,
+    required this.growthLabel,
+    this.growthHint,
     required this.peakYear,
     this.topJournal,
     required this.momentum,
@@ -97,6 +114,7 @@ class TopicSnapshot {
   });
 }
 
+/// Pulse card trên Overview — tổng publications + YoY + avg citations
 class LandscapePulse {
   final int totalPublications;
   final double yoyGrowthPercent;

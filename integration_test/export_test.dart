@@ -5,7 +5,7 @@ import 'package:lab2/main.dart' as app;
 
 void main() {
   patrolTest(
-    'TC09: PDF Export and Upload',
+    'TC12: PDF Export and Upload',
     ($) async {
       app.main();
       await $.pumpAndSettle();
@@ -26,7 +26,7 @@ void main() {
   );
 
   patrolTest(
-    'TC10: Remote Config',
+    'TC13: Remote Config Values',
     ($) async {
       app.main();
       await $.pumpAndSettle();

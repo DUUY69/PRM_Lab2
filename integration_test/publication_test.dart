@@ -5,7 +5,7 @@ import 'package:lab2/main.dart' as app;
 
 void main() {
   patrolTest(
-    'TC02: Topic Search',
+    'TC14: Topic Search Flow',
     ($) async {
       app.main();
       await $.pumpAndSettle();
@@ -29,7 +29,7 @@ void main() {
   );
 
   patrolTest(
-    'TC03: Publication Details',
+    'TC15: Publication Details Flow',
     ($) async {
       app.main();
       await $.pumpAndSettle();

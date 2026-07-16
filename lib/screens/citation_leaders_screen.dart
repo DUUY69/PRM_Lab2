@@ -45,7 +45,7 @@ class CitationLeadersScreen extends StatelessWidget {
 class _PapersTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final papers = context.watch<PublicationViewModel>().topPapersOpenAlex;
+    final papers = context.watch<PublicationViewModel>().dashboardTopPapersOpenAlex;
 
     if (papers.isEmpty) {
       return const Center(child: Text('No papers from OpenAlex'));

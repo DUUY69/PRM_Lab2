@@ -37,12 +37,14 @@ class JournalAiAppBar extends StatelessWidget {
   final bool showRefresh;
   final bool showBell;
   final bool showSearch;
+  final VoidCallback? onBellTap;
 
   const JournalAiAppBar({
     super.key,
     this.showRefresh = false,
     this.showBell = true,
     this.showSearch = true,
+    this.onBellTap,
   });
 
   @override
@@ -93,11 +95,11 @@ class JournalAiAppBar extends StatelessWidget {
               onPressed: provider.isLoading
                   ? null
                   : () => provider.refreshCurrentAnalysis(),
-            )
-          else if (showBell)
+            ),
+          if (showBell)
             IconButton(
               icon: const Icon(Icons.notifications_none, size: 22),
-              onPressed: () {},
+              onPressed: onBellTap,
             ),
         ],
       ),

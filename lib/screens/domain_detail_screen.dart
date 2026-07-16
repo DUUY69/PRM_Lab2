@@ -357,19 +357,15 @@ class _DomainDetailScreenState extends State<DomainDetailScreen> {
 
 class DomainDonutChart extends StatelessWidget {
   final List<OpenAlexRankedEntity> domains;
+  final void Function(OpenAlexRankedEntity domain)? onDomainTap;
 
-  const DomainDonutChart({super.key, required this.domains});
+  const DomainDonutChart({
+    super.key,
+    required this.domains,
+    this.onDomainTap,
+  });
 
-  static const _chartColors = [
-    AppColors.textPrimary,
-    AppColors.textSecondary,
-    AppColors.textTertiary,
-    Color(0xFFCCCCCC),
-    Color(0xFFDDDDDD),
-    Color(0xFFEEEEEE),
-    Color(0xFFB0B0B0),
-    Color(0xFF909090),
-  ];
+  static const _chartColors = AppColors.chartDonutPalette;
 
   @override
   Widget build(BuildContext context) {
@@ -415,6 +411,9 @@ class DomainDonutChart extends StatelessWidget {
                         percent: total > 0
                             ? legendItems[i].count / total * 100
                             : 0,
+                        onTap: onDomainTap == null
+                            ? null
+                            : () => onDomainTap!(legendItems[i]),
                       ),
                   ],
                 ),
@@ -440,17 +439,19 @@ class _LegendRow extends StatelessWidget {
   final String name;
   final int count;
   final double percent;
+  final VoidCallback? onTap;
 
   const _LegendRow({
     required this.color,
     required this.name,
     required this.count,
     required this.percent,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final row = Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
@@ -479,5 +480,7 @@ class _LegendRow extends StatelessWidget {
         ],
       ),
     );
+    if (onTap == null) return row;
+    return InkWell(onTap: onTap, child: row);
   }
 }

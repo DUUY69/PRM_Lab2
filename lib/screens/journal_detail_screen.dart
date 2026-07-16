@@ -125,6 +125,10 @@ class _JournalDetailScreenState extends State<JournalDetailScreen> {
     return _papers.fold<int>(0, (sum, p) => sum + p.citations) / _papers.length;
   }
 
+  int get _totalCitations {
+    return _papers.fold<int>(0, (sum, p) => sum + p.citations);
+  }
+
   @override
   Widget build(BuildContext context) {
     final totalCount =
@@ -185,16 +189,16 @@ class _JournalDetailScreenState extends State<JournalDetailScreen> {
                           ),
                           Expanded(
                             child: _StatCol(
-                              label: 'Avg Citations',
-                              value: _avgCitations.toStringAsFixed(0),
+                              label: 'Total Citations',
+                              value: formatOpenAlexCount(_totalCitations),
                               hint: 'loaded papers',
                             ),
                           ),
                           Expanded(
                             child: _StatCol(
-                              label: 'Loaded',
-                              value: '${_papers.length}',
-                              hint: 'on screen',
+                              label: 'Avg Citations',
+                              value: _avgCitations.toStringAsFixed(0),
+                              hint: 'per paper',
                             ),
                           ),
                         ],

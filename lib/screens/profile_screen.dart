@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:printing/printing.dart';
+import 'package:open_filex/open_filex.dart';
 
 import '../services/analytics_service.dart';
 import '../services/pdf_service.dart';
@@ -11,6 +13,7 @@ import '../services/messaging_service.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../viewmodels/publication_viewmodel.dart';
 import '../theme/app_theme.dart';
+import 'about_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -24,13 +27,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isUploading = false;
   bool _remoteConfigExpanded = false;
   bool _crashlyticsExpanded = false;
+  bool _fcmExpanded = false;
+  bool _isRefreshingConfig = false;
+  int _configRevision = 0;
+  String? _localPdfPath;
+
+  @override
+  void initState() {
+    super.initState();
+    MessagingService.refreshToken();
+  }
 
   Future<void> _exportPdfAndUpload() async {
     try {
       final publicationProvider =
           context.read<PublicationViewModel>();
 
-      setState(() => _isUploading = true);
+      setState(() {
+        _isUploading = true;
+        _localPdfPath = null;
+      });
 
       final file = await PdfService.generateReport(
         topic: publicationProvider.currentTopic,
@@ -42,6 +58,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await AnalyticsService.logExportPdf(
         publicationProvider.currentTopic,
       );
+
+      setState(() => _localPdfPath = file.path);
 
       final url = await StorageService.uploadPdf(file);
 
@@ -59,10 +77,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isUploading = false);
+      final hasLocal = _localPdfPath != null;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Export failed: $e')),
+        SnackBar(
+          content: Text(
+            hasLocal
+                ? 'PDF đã tạo local. Upload cloud lỗi: $e'
+                : 'Export failed: $e',
+          ),
+          duration: const Duration(seconds: 6),
+        ),
       );
     }
+  }
+
+  Future<void> _refreshRemoteConfig() async {
+    setState(() => _isRefreshingConfig = true);
+    final ok = await RemoteConfigService.refresh();
+    if (!mounted) return;
+    setState(() {
+      _isRefreshingConfig = false;
+      _configRevision++;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? 'Remote Config refreshed'
+              : 'Remote Config refresh failed (dùng giá trị mặc định)',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _copyFcmToken() async {
+    final token = await MessagingService.refreshToken();
+    if (token == null || token.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('FCM token chưa sẵn sàng')),
+      );
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: token));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Đã copy FCM token — dán vào Firebase Console test')),
+    );
   }
 
   Future<void> _previewPdf() async {
@@ -100,7 +161,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthViewModel>();
     final user = auth.currentUser;
-    final messages = MessagingService.messages;
+    // ignore: unused_local_variable — buộc rebuild khi refresh Remote Config
+    final _ = _configRevision;
+    final maxJournals = RemoteConfigService.maxJournals;
+    final maxKeywords = RemoteConfigService.maxKeywords;
 
     return Scaffold(
       appBar: AppBar(
@@ -111,10 +175,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           CircleAvatar(
             radius: 40,
-            backgroundImage: user?.photoURL != null
-                ? NetworkImage(user!.photoURL!)
+            backgroundImage: user?.photoUrl != null
+                ? NetworkImage(user!.photoUrl!)
                 : null,
-            child: user?.photoURL == null
+            child: user?.photoUrl == null
                 ? const Icon(Icons.person, size: 40)
                 : null,
           ),
@@ -150,6 +214,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 ListTile(
+                  key: const Key('export_pdf_button'),
                   leading: const Icon(Icons.picture_as_pdf),
                   title: const Text('Export & Upload Report'),
                   subtitle: _isUploading
@@ -174,6 +239,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                   onTap: _previewPdf,
                 ),
+                if (_localPdfPath != null) ...[
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.folder_open),
+                    title: const Text('Local PDF'),
+                    subtitle: Text(
+                      _localPdfPath!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    onTap: () => OpenFilex.open(_localPdfPath!),
+                  ),
+                ],
                 if (_uploadedUrl != null) ...[
                   const Divider(height: 1),
                   ListTile(
@@ -190,17 +269,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
                 const Divider(height: 1),
                 ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: const Text('About JournalAI'),
+                  subtitle: const Text('App info · OpenAlex API key'),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const Scaffold(
+                          body: AboutScreen(),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                ListTile(
                   leading: const Icon(Icons.logout),
                   title: const Text('Sign Out'),
                   onTap: () async {
                     await auth.signOut();
-                    if (context.mounted) {
-                      Navigator.pop(context);
-                    }
+                    // AuthGate tự chuyển về LoginScreen — không pop.
                   },
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 24),
+
+          const Text(
+            'Firebase Cloud Messaging',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ValueListenableBuilder<int>(
+            valueListenable: MessagingService.revision,
+            builder: (context, revision, child) {
+              final token = MessagingService.token;
+              return Card(
+                child: Column(
+                  children: [
+                    ListTile(
+                      key: const Key('fcm_token_section'),
+                      leading: const Icon(Icons.token),
+                      title: const Text('FCM Device Token'),
+                      subtitle: Text(
+                        token == null
+                            ? 'Chưa có token — cần quyền notification'
+                            : '${token.substring(0, token.length.clamp(0, 24))}…',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      trailing: Icon(
+                        _fcmExpanded ? Icons.expand_less : Icons.expand_more,
+                      ),
+                      onTap: () {
+                        setState(() => _fcmExpanded = !_fcmExpanded);
+                      },
+                    ),
+                    if (_fcmExpanded && token != null) ...[
+                      const Divider(height: 1),
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: SelectableText(
+                          token,
+                          style: const TextStyle(fontSize: 10),
+                        ),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.copy),
+                        title: const Text('Copy token'),
+                        subtitle: const Text(
+                          'Dán vào Firebase Console → Messaging → Send test',
+                        ),
+                        onTap: _copyFcmToken,
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
           ),
           const SizedBox(height: 24),
 
@@ -213,31 +365,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          Card(
-            child: messages.isEmpty
-                ? const ListTile(
-                    leading: Icon(Icons.notifications_none),
-                    title: Text('No notifications'),
-                    subtitle: Text('Push notifications from Firebase will appear here'),
-                  )
-                : Column(
-                    children: [
-                      for (var i = 0; i < messages.length && i < 10; i++)
-                        ListTile(
-                          leading: const Icon(Icons.notification_important, size: 20),
-                          title: Text(
-                            messages[i].notification?.title ?? 'Notification',
-                            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-                          ),
-                          subtitle: Text(
-                            messages[i].notification?.body ?? '',
-                            style: const TextStyle(fontSize: 12),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+          ValueListenableBuilder<int>(
+            valueListenable: MessagingService.revision,
+            builder: (context, revision, child) {
+              final messages = MessagingService.messages;
+              return Card(
+                child: messages.isEmpty
+                    ? const ListTile(
+                        leading: Icon(Icons.notifications_none),
+                        title: Text('No notifications'),
+                        subtitle: Text(
+                          'Push notifications from Firebase will appear here',
                         ),
-                    ],
-                  ),
+                      )
+                    : Column(
+                        children: [
+                          for (var i = 0; i < messages.length && i < 10; i++)
+                            ListTile(
+                              leading: const Icon(
+                                Icons.notification_important,
+                                size: 20,
+                              ),
+                              title: Text(
+                                messages[i].notification?.title ??
+                                    'Notification',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              subtitle: Text(
+                                messages[i].notification?.body ?? '',
+                                style: const TextStyle(fontSize: 12),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                      ),
+              );
+            },
           ),
           const SizedBox(height: 24),
 
@@ -254,6 +421,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 ListTile(
+                  key: const Key('remote_config_section'),
                   leading: const Icon(Icons.settings_remote),
                   title: const Text('Firebase Remote Config'),
                   subtitle: const Text('Dynamic configuration values'),
@@ -275,14 +443,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _ConfigValueTile(
+                  _ConfigValueTile(
                           label: 'Max Journals Displayed',
-                          value: '${RemoteConfigService.maxJournals}',
+                          value: '$maxJournals',
                         ),
                         const SizedBox(height: 8),
                         _ConfigValueTile(
                           label: 'Max Keywords Displayed',
-                          value: '${RemoteConfigService.maxKeywords}',
+                          value: '$maxKeywords',
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton.icon(
+                          key: const Key('refresh_remote_config'),
+                          onPressed:
+                              _isRefreshingConfig ? null : _refreshRemoteConfig,
+                          icon: _isRefreshingConfig
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.refresh, size: 18),
+                          label: const Text('Refresh from Firebase'),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Values from Firebase Remote Config (defaults if fetch fails).',
+                          style: TextStyle(
+                            color: AppColors.textTertiary,
+                            fontSize: 11,
+                          ),
                         ),
                       ],
                     ),

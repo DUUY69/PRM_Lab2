@@ -39,7 +39,7 @@ class _GrowthScreenState extends State<GrowthScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PublicationViewModel>();
-    final trend = _filterTrend(provider.yearlyTrendFromOpenAlex);
+    final trend = _filterTrend(provider.dashboardYearlyTrendFromOpenAlex);
     final insight = ResearchInsights.analyzeTrend(volumeByYear: trend);
     final domains = provider.growingTopicsOpenAlex.isNotEmpty
         ? provider.growingTopicsOpenAlex

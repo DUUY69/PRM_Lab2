@@ -2,8 +2,20 @@ import '../models/research_insight.dart';
 import '../models/openalex_ranked_entity.dart';
 import '../models/publication.dart';
 import 'count_format.dart';
+import 'overview_time_range.dart';
+import 'analytics_year.dart';
+
+// =============================================================================
+// research_insights.dart — TÍNH TOÁN INSIGHT (KHÔNG GỌI API)
+// =============================================================================
+// Nhận Map<int,int> trend từ provider (đã fetch từ OpenAlex group_by)
+// → tính % tăng trưởng, momentum, câu mô tả tiếng Anh cho UI
+//
+// Không có số giả — mọi con số đều từ dữ liệu API đã load
+// =============================================================================
 
 class ResearchInsights {
+  /// Phân tích xu hướng theo năm: growth %, peak year, momentum badge
   static TrendInsight analyzeTrend({
     required Map<int, int> volumeByYear,
     Map<int, int>? citationsByYear,
@@ -17,7 +29,10 @@ class ResearchInsights {
     final startCount = volumeByYear[startYear] ?? 0;
     final endCount = volumeByYear[endYear] ?? 0;
 
+    // % thay đổi từ năm đầu → năm cuối trong chart
     final periodGrowth = _percentChange(startCount, endCount);
+
+    // Year-over-year: 2 năm gần nhất
     final yoyGrowth = years.length >= 2
         ? _percentChange(
             volumeByYear[years[years.length - 2]] ?? 0,
@@ -25,6 +40,7 @@ class ResearchInsights {
           )
         : 0.0;
 
+    // Trung bình % tăng mỗi cặp năm liên tiếp
     final annualRates = <double>[];
     for (var i = 1; i < years.length; i++) {
       final prev = volumeByYear[years[i - 1]] ?? 0;
@@ -35,6 +51,7 @@ class ResearchInsights {
         ? 0.0
         : annualRates.reduce((a, b) => a + b) / annualRates.length;
 
+    // Năm có nhiều bài nhất
     final peakEntry = volumeByYear.entries.reduce(
       (a, b) => a.value >= b.value ? a : b,
     );
@@ -56,6 +73,7 @@ class ResearchInsights {
       momentum: momentum,
     );
 
+    // So sánh volume vs citations — phát hiện "nhiều bài nhưng ít trích dẫn"
     final citationNote = _citationDivergenceNote(
       volumeByYear: volumeByYear,
       citationsByYear: citationsByYear,
@@ -76,6 +94,7 @@ class ResearchInsights {
     );
   }
 
+  /// % tăng của một research domain — so nửa đầu vs nửa sau timeline
   static double computeConceptGrowth(Map<int, int> yearlyTrend) {
     if (yearlyTrend.length < 2) return 0;
 
@@ -102,6 +121,7 @@ class ResearchInsights {
     return _percentChange(earlySum, lateSum);
   }
 
+  /// Card "Landscape Pulse" trên Overview
   static LandscapePulse buildLandscapePulse({
     required int totalPublications,
     required Map<int, int> volumeByYear,
@@ -117,6 +137,7 @@ class ResearchInsights {
     );
   }
 
+  /// Card Topic Snapshot sau khi search Explore
   static TopicSnapshot buildTopicSnapshot({
     required String topic,
     required int totalPublications,
@@ -124,23 +145,138 @@ class ResearchInsights {
     required Map<int, int> citationsByYear,
     OpenAlexRankedEntity? topJournal,
   }) {
-    final insight = analyzeTrend(
-      volumeByYear: volumeByYear,
-      citationsByYear: citationsByYear,
-      topicLabel: topic,
-    );
-
-    return TopicSnapshot(
+    return buildTopicSnapshotForRange(
       topic: topic,
       totalPublications: totalPublications,
-      growthPercent: insight.periodGrowthPercent,
-      peakYear: insight.peakYear,
-      topJournal: topJournal?.name,
-      momentum: insight.momentum,
-      insightLine: insight.headline,
+      yearlyTrend: volumeByYear,
+      monthlyTrend: const {},
+      citationsByYear: citationsByYear,
+      timeRange: OverviewTimeRange.tenYears,
+      topJournal: topJournal,
     );
   }
 
+  /// Snapshot Explore theo khoảng Năm nay / 5 năm / 10 năm.
+  static TopicSnapshot buildTopicSnapshotForRange({
+    required String topic,
+    required int totalPublications,
+    required Map<int, int> yearlyTrend,
+    required Map<int, int> monthlyTrend,
+    required Map<int, int> citationsByYear,
+    required OverviewTimeRange timeRange,
+    OpenAlexRankedEntity? topJournal,
+  }) {
+    final currentYear = DateTime.now().year;
+    final volumeInRange = volumeInRangeFor(
+      range: timeRange,
+      yearlyTrend: filterYearlyFromAnalyticsStart(yearlyTrend),
+      monthlyTrend: monthlyTrend,
+    );
+    final publicationsInRange = volumeInRange.values.fold<int>(
+      0,
+      (sum, count) => sum + count,
+    );
+    final citationsInRange = timeRange == OverviewTimeRange.thisYear
+        ? <int, int>{}
+        : filterYearlyFromAnalyticsStart(
+            filterYearlyDataByRange(citationsByYear, timeRange),
+          );
+
+    final insight = analyzeTrend(
+      volumeByYear: volumeInRange,
+      citationsByYear: citationsInRange.isEmpty ? null : citationsInRange,
+      topicLabel: topic,
+    );
+
+    final growth = computeGrowthForRange(
+      volumeInRange: volumeInRange,
+      timeRange: timeRange,
+    );
+
+    final peakKey = volumeInRange.isEmpty
+        ? insight.peakYear
+        : volumeInRange.entries
+            .reduce((a, b) => a.value >= b.value ? a : b)
+            .key;
+
+    final coverage = timeRange.coverageLabelWithMonths(
+      currentYear,
+      monthlyTrend,
+    );
+    final insightLine = timeRange == OverviewTimeRange.thisYear
+        ? '$topic · monthly volume · $coverage'
+        : '${insight.headline} · $coverage';
+
+    return TopicSnapshot(
+      topic: topic,
+      totalPublications:
+          publicationsInRange > 0 ? publicationsInRange : totalPublications,
+      growthPercent: growth.percent,
+      growthLabel: growth.label,
+      growthHint: growth.hint,
+      peakYear: peakKey,
+      topJournal: topJournal?.name,
+      momentum: insight.momentum,
+      insightLine: insightLine,
+    );
+  }
+
+  /// Growth trong khoảng đã chọn.
+  /// Năm hiện tại (2026) chỉ dùng đủ cho tab Năm nay; 5/10 năm tính % đến năm trước.
+  static ({double percent, String label, String? hint}) computeGrowthForRange({
+    required Map<int, int> volumeInRange,
+    required OverviewTimeRange timeRange,
+  }) {
+    if (volumeInRange.length < 2) {
+      return (percent: 0.0, label: 'Growth', hint: null);
+    }
+
+    final currentYear = DateTime.now().year;
+
+    if (timeRange == OverviewTimeRange.thisYear) {
+      final months = volumeInRange.keys.toList()..sort();
+      final fromMonth = months[months.length - 2];
+      final toMonth = months.last;
+      return (
+        percent: _percentChange(
+          volumeInRange[fromMonth] ?? 0,
+          volumeInRange[toMonth] ?? 0,
+        ),
+        label:
+            'Growth ($currentYear · ${monthShortLabel(fromMonth)}→${monthShortLabel(toMonth)})',
+        hint: null,
+      );
+    }
+
+    final years = volumeInRange.keys.toList()..sort();
+    final startYear = years.first;
+    final endYear = _lastCompleteYearInTrend(years);
+    final includesCurrentYear = years.contains(currentYear);
+
+    return (
+      percent: _percentChange(
+        volumeInRange[startYear] ?? 0,
+        volumeInRange[endYear] ?? 0,
+      ),
+      label: 'Growth ($startYear→$endYear)',
+      hint: includesCurrentYear && endYear < currentYear
+          ? 'Năm $currentYear đang diễn ra — % tính đến hết $endYear'
+          : null,
+    );
+  }
+
+  /// Bỏ năm hiện tại khi tính growth — OpenAlex thường chưa đủ cả năm.
+  static int _lastCompleteYearInTrend(List<int> years) {
+    final currentYear = DateTime.now().year;
+    if (years.last < currentYear) return years.last;
+
+    final completeYears = years.where((year) => year < currentYear).toList();
+    if (completeYears.length >= 2) return completeYears.last;
+    if (years.length >= 2) return years[years.length - 2];
+    return years.last;
+  }
+
+  /// Một dòng mô tả ngắn cho Citation Leaders
   static String influentialPapersInsight(List<Publication> papers) {
     if (papers.isEmpty) {
       return 'Influential papers will appear once OpenAlex data loads.';
@@ -170,16 +306,19 @@ class ResearchInsights {
     return '${journals.first.name} and ${journals[1].name} publish the highest volume of influential research.';
   }
 
+  /// Hiển thị +42% hoặc -5%
   static String formatGrowth(double percent) {
     final sign = percent >= 0 ? '+' : '';
     return '$sign${percent.round()}%';
   }
 
+  /// Công thức: (mới - cũ) / cũ * 100
   static double _percentChange(int from, int to) {
     if (from <= 0) return to > 0 ? 100 : 0;
     return ((to - from) / from) * 100;
   }
 
+  /// Chuyển % tăng trưởng → badge High / Medium / Low / Declining
   static MomentumLevel _momentumFromRates(
     List<double> annualRates,
     double periodGrowth,
@@ -191,6 +330,7 @@ class ResearchInsights {
       return MomentumLevel.low;
     }
 
+    // Lấy trung bình 3 năm gần nhất (hoặc ít hơn nếu data ngắn)
     final recent = annualRates.length >= 3
         ? annualRates.sublist(annualRates.length - 3)
         : annualRates;

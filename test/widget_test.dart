@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
+import 'package:lab2/services/openalex_config.dart';
 import 'package:lab2/theme/app_theme.dart';
 import 'package:lab2/viewmodels/app_navigation_viewmodel.dart';
 import 'package:lab2/viewmodels/publication_viewmodel.dart';
@@ -11,10 +12,13 @@ import 'package:lab2/screens/keywords_screen.dart';
 
 void main() {
   testWidgets('JournalAI shell smoke test', (WidgetTester tester) async {
+    final config = OpenAlexConfig();
     await tester.pumpWidget(
       MultiProvider(
         providers: [
-          ChangeNotifierProvider(create: (_) => PublicationViewModel()),
+          ChangeNotifierProvider(
+            create: (_) => PublicationViewModel(config: config),
+          ),
           ChangeNotifierProvider(create: (_) => AppNavigationViewModel()),
         ],
         child: MaterialApp(

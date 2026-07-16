@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../utils/count_format.dart';
 import '../widgets/app_logo.dart';
 import '../services/analytics_service.dart';
+import '../services/remote_config_service.dart';
 import 'search_screen.dart';
 import 'domain_detail_screen.dart';
 
@@ -16,7 +17,8 @@ class KeywordsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PublicationViewModel>();
-    final keywords = provider.trendingAreas;
+    final maxKeywords = RemoteConfigService.maxKeywords;
+    final keywords = provider.trendingAreas.take(maxKeywords).toList();
     final growingTopics = provider.growingTopicsOpenAlex;
 
     return SafeArea(
@@ -70,13 +72,29 @@ class KeywordsScreen extends StatelessWidget {
                       ),
                     )
                   else if (keywords.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Center(
-                        child: Text(
-                          'No keyword data yet. Search for a topic first.',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'No keyword data yet. Search for a topic first.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SearchScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.search, size: 18),
+                            label: const Text('Search topic'),
+                          ),
+                        ],
                       ),
                     )
                   else ...[

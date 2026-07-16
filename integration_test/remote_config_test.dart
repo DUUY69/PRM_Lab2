@@ -5,7 +5,7 @@ import 'package:lab2/main.dart' as app;
 
 void main() {
   patrolTest(
-    'TC10: Remote Config Retrieval',
+    'TC16: Remote Config Retrieval',
     ($) async {
       app.main();
       await $.pumpAndSettle();

@@ -10,6 +10,8 @@ import '../widgets/journal_bar_chart.dart';
 import '../widgets/ranked_list_widgets.dart';
 import 'journal_detail_screen.dart';
 import '../services/analytics_service.dart';
+import '../services/remote_config_service.dart';
+import 'search_screen.dart';
 
 class JournalsTabScreen extends StatelessWidget {
   const JournalsTabScreen({super.key});
@@ -17,17 +19,35 @@ class JournalsTabScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PublicationViewModel>();
-    final journals = provider.rankedJournals;
+    final maxJournals = RemoteConfigService.maxJournals;
+    final journals = provider.rankedJournals.take(maxJournals).toList();
 
     return SafeArea(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
-            child: Text(
-              'Journals',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
+            child: Row(
+              children: [
+                const Text(
+                  'Journals',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.search, size: 22),
+                  tooltip: 'Search topic',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const SearchScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
           ),
           const Padding(
@@ -54,13 +74,29 @@ class JournalsTabScreen extends StatelessWidget {
                       ),
                     )
                   else if (journals.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Center(
-                        child: Text(
-                          'No journal data yet. Search for a topic first.',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      child: Column(
+                        children: [
+                          const Text(
+                            'No journal data yet. Search for a topic first.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SearchScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.search, size: 18),
+                            label: const Text('Search topic'),
+                          ),
+                        ],
                       ),
                     )
                   else ...[
