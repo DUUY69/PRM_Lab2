@@ -150,6 +150,8 @@ class PublicationViewModel extends ChangeNotifier {
       _dashboardMonthlyTrendFromOpenAlex;
   Map<int, int> get dashboardCitationsByYearOpenAlex =>
       _dashboardCitationsByYearOpenAlex;
+  Map<int, int> get dashboardAvgCitationsByYearOpenAlex =>
+      _dashboardAvgCitationsByYearOpenAlex;
   double get dashboardAverageCitationOpenAlex =>
       _dashboardAverageCitationOpenAlex;
   List<OpenAlexRankedEntity> get dashboardTrendingAreas =>

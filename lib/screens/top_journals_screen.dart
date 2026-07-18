@@ -1,7 +1,3 @@
-// =============================================================================
-// top_journals_screen.dart — DANH SÁCH TOP JOURNALS (màn classic)
-// =============================================================================
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,13 +12,8 @@ class TopJournalsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    final provider = context.watch<PublicationProvider>();
-    final topJournals = provider.dashboardRankedJournals;
-=======
     final provider = context.watch<PublicationViewModel>();
     final topJournals = provider.rankedJournals;
->>>>>>> feature/lab3
 
     return Scaffold(
       appBar: AppBar(

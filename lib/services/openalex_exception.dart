@@ -1,10 +1,4 @@
-// =============================================================================
-// openalex_exception.dart — LỖI API
-// =============================================================================
-// OpenAlexService._mapHttpError() tạo exception → provider hiển thị trên UI
-// =============================================================================
-
-/// Lỗi gọi OpenAlex — PublicationProvider._mapError() hiển thị message này
+/// Lỗi gọi OpenAlex API — message thân thiện cho UI
 class OpenAlexException implements Exception {
   final String message;
   final int? statusCode;

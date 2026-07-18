@@ -1,10 +1,3 @@
-// =============================================================================
-// year_detail_screen.dart — CHI TIẾT MỘT NĂM TRÊN BIỂU ĐỒ
-// =============================================================================
-// Tap cột năm trên TrendScreen → papers năm đó + hot topics (concepts).
-// Chip concept tap → DomainDetailScreen.
-// =============================================================================
-
 import 'package:flutter/material.dart';
 
 import '../models/openalex_ranked_entity.dart';
@@ -107,13 +100,6 @@ class _YearDetailScreenState extends State<YearDetailScreen> {
     }
   }
 
-  String get _topJournalLabel {
-    if (_papers.isEmpty) {
-      return 'N/A';
-    }
-    return _papers.first.journal.split(' ').first;
-  }
-
   @override
   Widget build(BuildContext context) {
     final openAlexCount = widget.provider.openAlexCountForYear(widget.year);
@@ -150,7 +136,9 @@ class _YearDetailScreenState extends State<YearDetailScreen> {
                       Expanded(
                         child: _YearStat(
                           label: 'Top Journal',
-                          value: _topJournalLabel,
+                          value: _papers.isEmpty
+                              ? 'N/A'
+                              : _papers.first.journal.split(' ').first,
                         ),
                       ),
                     ],

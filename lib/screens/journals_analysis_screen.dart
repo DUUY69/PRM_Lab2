@@ -1,9 +1,3 @@
-// =============================================================================
-// journals_analysis_screen.dart — JOURNAL RANKING (#14)
-// =============================================================================
-// JournalBarChart + ranked list — tab Journals trong Keywords hub.
-// =============================================================================
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -20,13 +14,8 @@ class JournalsAnalysisScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    final provider = context.watch<PublicationProvider>();
-    final journals = provider.dashboardRankedJournals;
-=======
     final provider = context.watch<PublicationViewModel>();
     final journals = provider.rankedJournals;
->>>>>>> feature/lab3
 
     return DefaultTabController(
       length: 2,
@@ -59,7 +48,7 @@ class JournalsAnalysisScreen extends StatelessWidget {
                   child: JournalBarChart(
                     journals: journals.map((j) => j.entry).toList(),
                     onJournalTap: (name) {
-                      final journal = provider.dashboardRankedJournalByName(name);
+                      final journal = provider.rankedJournalByName(name);
                       if (journal == null) return;
                       Navigator.push(
                         context,

@@ -1,13 +1,10 @@
-import 'dart:convert';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:lab2/models/openalex_ranked_entity.dart';
 import 'package:lab2/models/publication.dart';
-import 'package:lab2/models/publication_author.dart';
 import 'package:lab2/models/research_insight.dart';
-import 'package:lab2/providers/publication_provider.dart';
+import 'package:lab2/viewmodels/publication_viewmodel.dart';
 import 'package:lab2/services/openalex_config.dart';
 import 'package:lab2/services/openalex_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,11 +18,11 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  group('PublicationProvider computed values', () {
-    late PublicationProvider provider;
+  group('PublicationViewModel computed values', () {
+    late PublicationViewModel provider;
 
     setUp(() {
-      provider = PublicationProvider(config: OpenAlexConfig());
+      provider = PublicationViewModel(config: OpenAlexConfig());
     });
 
     test('trendInsight uses loaded yearly data', () {
@@ -45,7 +42,7 @@ void main() {
 
     test('topicSnapshot is null in global scope', () {
       provider.scope = AnalysisScope.global;
-      provider.currentTopic = PublicationProvider.globalTopicLabel;
+      provider.currentTopic = PublicationViewModel.globalTopicLabel;
 
       expect(provider.topicSnapshot, isNull);
     });
@@ -128,8 +125,8 @@ void main() {
     });
   });
 
-  group('PublicationProvider with mocked OpenAlex', () {
-    late PublicationProvider provider;
+  group('PublicationViewModel with mocked OpenAlex', () {
+    late PublicationViewModel provider;
 
     OpenAlexService fastOpenAlex(http.Client client) {
       return OpenAlexService(
@@ -141,7 +138,7 @@ void main() {
     }
 
     setUp(() {
-      provider = PublicationProvider(
+      provider = PublicationViewModel(
         config: OpenAlexConfig(),
         openAlexService: fastOpenAlex(buildOpenAlexMockClient()),
       );
@@ -288,11 +285,73 @@ void main() {
       expect(provider.isSearchLoading, isFalse);
     });
 
+    test('dashboard lookup helpers use snapshot after load', () async {
+      await provider.loadDefaultDashboard();
+
+      expect(provider.dashboardAvgCitationsByYearOpenAlex, isA<Map<int, int>>());
+      expect(provider.dashboardOpenAccessPercent, greaterThanOrEqualTo(0));
+      expect(provider.dashboardLandscapePulse.peakYear, greaterThan(0));
+
+      if (provider.dashboardRankedAuthors.isNotEmpty) {
+        final name = provider.dashboardRankedAuthors.first.name;
+        expect(provider.dashboardRankedAuthorByName(name)?.name, name);
+      }
+      if (provider.dashboardRankedJournals.isNotEmpty) {
+        final name = provider.dashboardRankedJournals.first.name;
+        expect(provider.dashboardRankedJournalByName(name)?.name, name);
+      }
+      if (provider.dashboardTrendingAreas.isNotEmpty) {
+        final id = provider.dashboardTrendingAreas.first.id;
+        expect(provider.dashboardRankedConceptById(id)?.id, id);
+      }
+      expect(provider.dashboardRankedConceptById('missing-id'), isNull);
+      expect(provider.dashboardRankedAuthorByName('nobody'), isNull);
+    });
+
+    test('loadConcept/Author/Journal extras return lists', () async {
+      const concept = OpenAlexRankedEntity(id: 'C1', name: 'AI', count: 1);
+      const author = OpenAlexRankedEntity(id: 'A1', name: 'Alice', count: 1);
+      const journal = OpenAlexRankedEntity(id: 'J1', name: 'Nature', count: 1);
+      const institution =
+          OpenAlexRankedEntity(id: 'I1', name: 'MIT', count: 1);
+
+      final conceptAuthors = await provider.loadConceptTopAuthors(concept);
+      final conceptJournals = await provider.loadConceptTopJournals(concept);
+      final authorJournals = await provider.loadAuthorTopJournals(author);
+      final journalAuthors = await provider.loadJournalTopAuthors(journal);
+      final institutionTrend = await provider.loadInstitutionTrend(institution);
+      final institutionAuthors =
+          await provider.loadInstitutionTopAuthors(institution);
+      final conceptWorks = await provider.loadConceptWorksPage(concept, 1);
+      final institutionWorks = await provider.loadWorksByInstitutionPage(
+        institution,
+        1,
+      );
+
+      expect(conceptAuthors, isNotEmpty);
+      expect(conceptJournals, isNotEmpty);
+      expect(authorJournals, isNotEmpty);
+      expect(journalAuthors, isNotEmpty);
+      expect(institutionTrend, isNotEmpty);
+      expect(institutionAuthors, isNotEmpty);
+      expect(conceptWorks.publications, isNotEmpty);
+      expect(institutionWorks.publications, isNotEmpty);
+    });
+
+    test('recent searches load and clear', () async {
+      await provider.searchPublications('quantum');
+      await provider.loadRecentSearches();
+      expect(provider.recentSearches, isNotEmpty);
+
+      await provider.clearRecentSearches();
+      expect(provider.recentSearches, isEmpty);
+    });
+
     test('maps HTTP errors to errorMessage', () async {
       final failingClient = MockClient((request) async {
         return http.Response('forbidden', 403);
       });
-      final failingProvider = PublicationProvider(
+      final failingProvider = PublicationViewModel(
         config: OpenAlexConfig(),
         openAlexService: fastOpenAlex(failingClient),
       );

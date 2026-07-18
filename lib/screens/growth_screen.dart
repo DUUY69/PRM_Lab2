@@ -1,9 +1,3 @@
-// =============================================================================
-// growth_screen.dart — RESEARCH GROWTH (diagram trend mở rộng)
-// =============================================================================
-// Chart + CAGR + growth bars theo domain. Mở từ Overview tile.
-// =============================================================================
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -44,16 +38,12 @@ class _GrowthScreenState extends State<GrowthScreen> {
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    final provider = context.watch<PublicationProvider>();
-=======
     final provider = context.watch<PublicationViewModel>();
->>>>>>> feature/lab3
     final trend = _filterTrend(provider.dashboardYearlyTrendFromOpenAlex);
     final insight = ResearchInsights.analyzeTrend(volumeByYear: trend);
-    final domains = provider.dashboardGrowingTopicsOpenAlex.isNotEmpty
-        ? provider.dashboardGrowingTopicsOpenAlex
-        : provider.dashboardTrendingAreas
+    final domains = provider.growingTopicsOpenAlex.isNotEmpty
+        ? provider.growingTopicsOpenAlex
+        : provider.trendingAreas
             .map(
               (d) => TopicGrowthInsight(
                 id: d.id,
@@ -98,10 +88,7 @@ class _GrowthScreenState extends State<GrowthScreen> {
             padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
             child: trend.isEmpty
                 ? const Text('No trend data')
-                : TrendChart(
-                    yearlyData: trend,
-                    overlayYearlyData: provider.dashboardCitationsByYearOpenAlex,
-                  ),
+                : TrendChart(yearlyData: trend),
           ),
           const SizedBox(height: 16),
           Row(
@@ -176,7 +163,7 @@ class _GrowthScreenState extends State<GrowthScreen> {
                       ...domains.take(5).map((domain) {
                         final width = (domain.growthPercent.abs() / 320)
                             .clamp(0.08, 1.0);
-                        final entity = provider.dashboardRankedConceptById(domain.id) ??
+                        final entity = provider.rankedConceptById(domain.id) ??
                             OpenAlexRankedEntity(
                               id: domain.id,
                               name: domain.name,
@@ -212,7 +199,7 @@ class _GrowthScreenState extends State<GrowthScreen> {
                                       child: Container(
                                         height: 8,
                                         decoration: BoxDecoration(
-                                          color: AppColors.chartPrimary,
+                                          color: AppColors.textPrimary,
                                           borderRadius:
                                               BorderRadius.circular(2),
                                         ),

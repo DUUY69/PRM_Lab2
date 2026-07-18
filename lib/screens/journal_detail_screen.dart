@@ -1,9 +1,3 @@
-// =============================================================================
-// journal_detail_screen.dart — CHI TIẾT JOURNAL / NGUỒN XUẤT BẢN
-// =============================================================================
-// Filter primary_location.source.id — trend, top authors, papers paginated.
-// =============================================================================
-
 import 'package:flutter/material.dart';
 
 import '../models/openalex_ranked_entity.dart';
@@ -15,12 +9,14 @@ import '../theme/app_theme.dart';
 import '../utils/count_format.dart';
 import '../utils/research_insights.dart';
 import '../widgets/app_logo.dart';
-import '../widgets/entity_detail_sections.dart';
+import '../widgets/insight_widgets.dart';
+import '../widgets/load_more_footer.dart';
+import '../widgets/publication_card.dart';
 import '../widgets/ranked_list_widgets.dart';
+import '../widgets/trend_chart.dart';
 import 'author_detail_screen.dart';
 import '../services/analytics_service.dart';
 
-/// Màn chi tiết **journal/source** — filter `primary_location.source.id`.
 class JournalDetailScreen extends StatefulWidget {
   final OpenAlexRankedEntity journal;
   final PublicationViewModel provider;
@@ -56,7 +52,6 @@ class _JournalDetailScreenState extends State<JournalDetailScreen> {
     _loadInitial();
   }
 
-  /// Papers trang 1 + trend + top authors (song song).
   Future<void> _loadInitial() async {
     setState(() {
       _loading = true;
@@ -99,7 +94,6 @@ class _JournalDetailScreenState extends State<JournalDetailScreen> {
     }
   }
 
-  /// Phân trang thêm 20 bài.
   Future<void> _loadMore() async {
     if (!_hasMore || _loadingMore) return;
 
@@ -126,109 +120,20 @@ class _JournalDetailScreenState extends State<JournalDetailScreen> {
     }
   }
 
-  /// Avg citations trên các bài đã load.
   double get _avgCitations {
     if (_papers.isEmpty) return 0;
     return _papers.fold<int>(0, (sum, p) => sum + p.citations) / _papers.length;
   }
 
-<<<<<<< HEAD
-  Widget _buildLoadedBody(int totalCount, TrendInsight? insight) {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        Text(
-          widget.journal.name,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'OpenAlex journal / source',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: 16),
-        EntityStatsCard(
-          totalCount: totalCount,
-          avgCitations: _avgCitations,
-          loadedCount: _papers.length,
-        ),
-        if (insight != null) EntityGrowthInsightCard(insight: insight),
-        EntityTrendSection(
-          title: 'Publication Trend',
-          subtitle: 'Works in this journal · OpenAlex',
-          trend: _trend,
-          emptyMessage: 'No trend data for this journal.',
-        ),
-        EntityPapersSection(
-          title: 'Top Papers',
-          subtitle: 'Most cited in this journal',
-          papers: _papers,
-          totalCount: totalCount,
-          isLoadingMore: _loadingMore,
-          hasMore: _hasMore,
-          onLoadMore: _loadMore,
-          emptyMessage: 'No papers found on OpenAlex.',
-        ),
-        const SizedBox(height: 24),
-        const ScreenSectionHeader(
-          title: 'Top Authors',
-          subtitle: 'Most publications in this journal',
-        ),
-        const SizedBox(height: 8),
-        if (_authors.isEmpty)
-          const Text(
-            'No author data for this journal.',
-            style: TextStyle(color: AppColors.textSecondary),
-          )
-        else
-          MockupCard(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Column(
-              children: _authors.asMap().entries.map((entry) {
-                final author = entry.value;
-                return RankedMetricTile(
-                  rank: entry.key + 1,
-                  title: author.name,
-                  metricValue: formatOpenAlexCount(author.count),
-                  metricLabel: 'publications',
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => AuthorDetailScreen(
-                        author: author,
-                        provider: widget.provider,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildBody(int totalCount, TrendInsight? insight) {
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-    }
-    if (_error != null && _papers.isEmpty) {
-      return EntityDetailErrorView(message: _error!, onRetry: _loadInitial);
-    }
-    return _buildLoadedBody(totalCount, insight);
-=======
   int get _totalCitations {
     return _papers.fold<int>(0, (sum, p) => sum + p.citations);
->>>>>>> feature/lab3
   }
 
   @override
   Widget build(BuildContext context) {
     final totalCount =
         _totalCount > 0 ? _totalCount : widget.journal.count;
+    final insight = _insight;
 
     return Scaffold(
       appBar: AppBar(
@@ -242,9 +147,6 @@ class _JournalDetailScreenState extends State<JournalDetailScreen> {
           overflow: TextOverflow.ellipsis,
         ),
       ),
-<<<<<<< HEAD
-      body: _buildBody(totalCount, _insight),
-=======
       body: _loading
           ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
           : _error != null && _papers.isEmpty
@@ -455,7 +357,6 @@ class _StatCol extends StatelessWidget {
           ),
         ],
       ],
->>>>>>> feature/lab3
     );
   }
 }

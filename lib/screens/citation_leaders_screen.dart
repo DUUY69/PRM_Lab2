@@ -1,9 +1,3 @@
-// =============================================================================
-// citation_leaders_screen.dart — TOP PAPERS + AUTHORS THEO CITATIONS
-// =============================================================================
-// Sort cited_by_count — khác danh sách Explore (relevance).
-// =============================================================================
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -13,7 +7,6 @@ import '../widgets/ranked_list_widgets.dart';
 import 'author_detail_screen.dart';
 import 'detail_screen.dart';
 import 'journal_detail_screen.dart';
-import 'research_leaders_screen.dart';
 
 class CitationLeadersScreen extends StatelessWidget {
   const CitationLeadersScreen({super.key});
@@ -52,11 +45,7 @@ class CitationLeadersScreen extends StatelessWidget {
 class _PapersTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    final papers = context.watch<PublicationProvider>().dashboardTopPapersOpenAlex;
-=======
     final papers = context.watch<PublicationViewModel>().dashboardTopPapersOpenAlex;
->>>>>>> feature/lab3
 
     if (papers.isEmpty) {
       return const Center(child: Text('No papers from OpenAlex'));
@@ -91,13 +80,8 @@ class _PapersTab extends StatelessWidget {
 class _AuthorsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    final provider = context.watch<PublicationProvider>();
-    final authors = provider.dashboardRankedAuthors;
-=======
     final provider = context.watch<PublicationViewModel>();
     final authors = provider.rankedAuthors;
->>>>>>> feature/lab3
 
     if (authors.isEmpty) {
       return const Center(child: Text('No authors from OpenAlex'));
@@ -106,19 +90,6 @@ class _AuthorsTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton.icon(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const ResearchLeadersScreen(),
-              ),
-            ),
-            icon: const Icon(Icons.leaderboard_outlined, size: 18),
-            label: const Text('Research leaders by volume'),
-          ),
-        ),
         const RankedListHeader(metricColumnLabel: 'Publications'),
         ...authors.asMap().entries.map(
               (entry) => RankedMetricTile(
@@ -145,13 +116,8 @@ class _AuthorsTab extends StatelessWidget {
 class _JournalsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    final provider = context.watch<PublicationProvider>();
-    final journals = provider.dashboardRankedJournals;
-=======
     final provider = context.watch<PublicationViewModel>();
     final journals = provider.rankedJournals;
->>>>>>> feature/lab3
 
     if (journals.isEmpty) {
       return const Center(child: Text('No journals from OpenAlex'));

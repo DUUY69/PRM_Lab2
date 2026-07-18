@@ -1,5 +1,3 @@
-// Test OpenAlexService — error mapping + live API (cần OPENALEX_API_KEY)
-
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';

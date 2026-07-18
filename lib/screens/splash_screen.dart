@@ -1,5 +1,3 @@
-// Splash: preload dashboard → chuyển MainShell (4 tab Home/Journal/Keywords/Profile)
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -8,7 +6,6 @@ import '../theme/app_theme.dart';
 import '../widgets/app_logo.dart';
 import 'main_shell.dart';
 
-/// Màn mở đầu — loadDefaultDashboard() rồi pushReplacement MainShell
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -23,7 +20,6 @@ class _SplashScreenState extends State<SplashScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
 
-  /// Preload data trước khi user thấy tab Home
   Future<void> _bootstrap() async {
     final provider = context.read<PublicationViewModel>();
     await provider.loadDefaultDashboard();
@@ -36,15 +32,15 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: AppColors.surface,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            AppLogo(size: 88),
-            SizedBox(height: 20),
-            Text(
+            const AppLogo(size: 88),
+            const SizedBox(height: 20),
+            const Text(
               'JournalAI',
               style: TextStyle(
                 fontSize: 26,
@@ -52,16 +48,16 @@ class _SplashScreenState extends State<SplashScreen> {
                 letterSpacing: -0.5,
               ),
             ),
-            SizedBox(height: 6),
-            Text(
+            const SizedBox(height: 6),
+            const Text(
               'Research Intelligence',
               style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
               ),
             ),
-            SizedBox(height: 48),
-            SizedBox(
+            const SizedBox(height: 48),
+            const SizedBox(
               width: 160,
               child: LinearProgressIndicator(
                 minHeight: 2,
@@ -69,8 +65,8 @@ class _SplashScreenState extends State<SplashScreen> {
                 color: AppColors.textPrimary,
               ),
             ),
-            SizedBox(height: 12),
-            Text(
+            const SizedBox(height: 12),
+            const Text(
               'Loading research data...',
               style: TextStyle(
                 color: AppColors.textSecondary,

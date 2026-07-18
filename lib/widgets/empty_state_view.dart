@@ -1,4 +1,3 @@
-// Màn trống khi không có dữ liệu (icon + title + subtitle)
 import 'package:flutter/material.dart';
 
 class EmptyStateView extends StatelessWidget {

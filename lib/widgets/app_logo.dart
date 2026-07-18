@@ -1,9 +1,3 @@
-// =============================================================================
-// app_logo.dart — LOGO + UI COMPONENTS DÙNG CHUNG
-// =============================================================================
-// AppLogo, JournalAiAppBar, MockupCard, GrowthBadge, LandscapeTile, StatColumn
-// =============================================================================
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -18,7 +12,6 @@ class AppLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // assets/images/app_logo.png — fallback emoji nếu thiếu file
     return ClipOval(
       child: Image.asset(
         'assets/images/app_logo.png',
@@ -40,7 +33,6 @@ class AppLogo extends StatelessWidget {
   }
 }
 
-/// Header Overview/About — logo + refresh (gọi provider.refreshCurrentAnalysis)
 class JournalAiAppBar extends StatelessWidget {
   final bool showRefresh;
   final bool showBell;
@@ -102,15 +94,9 @@ class JournalAiAppBar extends StatelessWidget {
               icon: const Icon(Icons.refresh, size: 20),
               onPressed: provider.isLoading
                   ? null
-<<<<<<< HEAD
-                  : () => provider.loadDefaultDashboard(),
-            )
-          else if (showBell)
-=======
                   : () => provider.refreshCurrentAnalysis(),
             ),
           if (showBell)
->>>>>>> feature/lab3
             IconButton(
               icon: const Icon(Icons.notifications_none, size: 22),
               onPressed: onBellTap,
@@ -121,7 +107,6 @@ class JournalAiAppBar extends StatelessWidget {
   }
 }
 
-/// Container trắng viền bo — card style chính của app
 class MockupCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -147,7 +132,6 @@ class MockupCard extends StatelessWidget {
   }
 }
 
-/// Badge YoY trên Overview pulse card
 class GrowthBadge extends StatelessWidget {
   final double percent;
 
@@ -174,7 +158,6 @@ class GrowthBadge extends StatelessWidget {
   }
 }
 
-/// Tile menu có icon — Research Landscape, Keywords hub, Home links
 class LandscapeTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -245,7 +228,6 @@ class LandscapeTile extends StatelessWidget {
   }
 }
 
-/// Cột stat 3 ô trên Overview (Average Citations, Peak Year…)
 class StatColumn extends StatelessWidget {
   final String label;
   final String value;

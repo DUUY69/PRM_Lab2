@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-// =============================================================================
-=======
 ﻿// =============================================================================
->>>>>>> feature/lab3
 // search_screen.dart — EXPLORE / SEARCH (màn cũ, mở từ Home)
 // =============================================================================
 // Search topic → provider.searchPublications → snapshot + load more 20 bài.
@@ -54,11 +50,7 @@ class _SearchScreenState extends State<SearchScreen> {
       _searchController.text = preset;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-<<<<<<< HEAD
-      context.read<PublicationProvider>().loadRecentSearches();
-=======
       context.read<PublicationViewModel>().loadRecentSearches();
->>>>>>> feature/lab3
     });
   }
 
@@ -96,11 +88,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildExpandedContent({
-<<<<<<< HEAD
-    required PublicationProvider provider,
-=======
     required PublicationViewModel provider,
->>>>>>> feature/lab3
     required bool showSearchLoading,
     required bool inTopicScope,
   }) {
@@ -121,11 +109,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    final provider = context.watch<PublicationProvider>();
-=======
     final provider = context.watch<PublicationViewModel>();
->>>>>>> feature/lab3
     final inTopicScope = !provider.isGlobalScope; // đã search hay chưa
     final loadingPapers = provider.isSearchLoading;
     // Chỉ full-screen loading khi chưa có bài nào (search mới)
@@ -221,11 +205,7 @@ class _SearchScreenState extends State<SearchScreen> {
 }
 
 class _ExploreResults extends StatefulWidget {
-<<<<<<< HEAD
-  final PublicationProvider provider;
-=======
   final PublicationViewModel provider;
->>>>>>> feature/lab3
   final bool loadingInsights;
 
   const _ExploreResults({
@@ -240,11 +220,7 @@ class _ExploreResults extends StatefulWidget {
 class _ExploreResultsState extends State<_ExploreResults> {
   OverviewTimeRange _timeRange = OverviewTimeRange.fiveYears;
 
-<<<<<<< HEAD
-  PublicationProvider get provider => widget.provider;
-=======
   PublicationViewModel get provider => widget.provider;
->>>>>>> feature/lab3
 
   TopicSnapshot? _snapshotForRange() {
     if (!provider.isTopicInsightsReady) return null;

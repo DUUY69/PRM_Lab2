@@ -1,9 +1,3 @@
-// =============================================================================
-// domain_detail_screen.dart — CHI TIẾT RESEARCH DOMAIN (OpenAlex concept)
-// =============================================================================
-// Filter concepts.id — trend, top authors/journals, papers, donut chart.
-// =============================================================================
-
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -25,8 +19,6 @@ import '../widgets/ranked_list_widgets.dart';
 import 'author_detail_screen.dart';
 import 'journal_detail_screen.dart';
 
-/// Màn chi tiết một **research domain** (OpenAlex concept).
-/// Nhận [domain] từ Research Domains / Keyword Overview / Home landscape.
 class DomainDetailScreen extends StatefulWidget {
   final OpenAlexRankedEntity domain;
 
@@ -36,30 +28,25 @@ class DomainDetailScreen extends StatefulWidget {
   State<DomainDetailScreen> createState() => _DomainDetailScreenState();
 }
 
-/// State local — data load riêng cho domain này, không lưu trong provider global.
 class _DomainDetailScreenState extends State<DomainDetailScreen> {
-  Map<int, int> _trend = {}; // năm → số bài có concept này
+  Map<int, int> _trend = {};
   List<OpenAlexRankedEntity> _authors = [];
   List<OpenAlexRankedEntity> _journals = [];
   List<Publication> _papers = [];
-  int _papersTotal = 0; // meta.count từ API
-  int _papersPage = 0; // trang đã load (20 bài/trang)
+  int _papersTotal = 0;
+  int _papersPage = 0;
   bool _papersHasMore = false;
-  TrendInsight? _insight; // % growth tính từ _trend
+  TrendInsight? _insight;
   bool _loading = true;
   bool _loadingMorePapers = false;
   String? _error;
 
-  /// Tự gọi _load() khi màn hình mở lần đầu.
   @override
   void initState() {
     super.initState();
     _load();
   }
 
-  /// Load song song 4 API scoped filter `concepts.id:{domain.id}`:
-  /// trend, top authors, top journals, papers trang 1.
-  /// Nếu đang search topic → provider tự gắn thêm search=currentTopic.
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -103,7 +90,6 @@ class _DomainDetailScreenState extends State<DomainDetailScreen> {
     }
   }
 
-  /// Phân trang papers — gọi loadConceptWorksPage trang tiếp theo, append vào _papers.
   Future<void> _loadMorePapers() async {
     if (!_papersHasMore || _loadingMorePapers) return;
 
@@ -131,48 +117,43 @@ class _DomainDetailScreenState extends State<DomainDetailScreen> {
     }
   }
 
-<<<<<<< HEAD
-  Widget _buildTrendChart() {
-    if (_trend.isEmpty) {
-      return const Text(
-        'No trend data for this domain.',
-        style: TextStyle(color: AppColors.textSecondary),
-      );
-    }
-    return TrendChart(yearlyData: _trend);
-  }
-=======
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PublicationViewModel>();
     final insight = _insight;
     final totalCount =
         _papersTotal > 0 ? _papersTotal : widget.domain.count;
->>>>>>> feature/lab3
 
-  Widget _buildErrorState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(_error!, textAlign: TextAlign.center),
-            TextButton(onPressed: _load, child: const Text('Retry')),
-          ],
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          widget.domain.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
-    );
-  }
-
-  Widget _buildLoadedBody(
-    PublicationProvider provider,
-    int totalCount,
-    TrendInsight? insight,
-  ) {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+          : _error != null && insight == null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_error!, textAlign: TextAlign.center),
+                        TextButton(onPressed: _load, child: const Text('Retry')),
+                      ],
+                    ),
+                  ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.all(20),
+                  children: [
                     MockupCard(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,7 +221,14 @@ class _DomainDetailScreenState extends State<DomainDetailScreen> {
                     const SizedBox(height: 12),
                     MockupCard(
                       padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
-                      child: _buildTrendChart(),
+                      child: _trend.isEmpty
+                          ? const Text(
+                              'No trend data for this domain.',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                              ),
+                            )
+                          : TrendChart(yearlyData: _trend),
                     ),
                     const SizedBox(height: 24),
                     const ScreenSectionHeader(
@@ -362,44 +350,11 @@ class _DomainDetailScreenState extends State<DomainDetailScreen> {
                         ),
                       ),
                   ],
-    );
-  }
-
-  Widget _buildBody(PublicationProvider provider, int totalCount) {
-    final insight = _insight;
-    if (_loading) {
-      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-    }
-    if (_error != null && insight == null) {
-      return _buildErrorState();
-    }
-    return _buildLoadedBody(provider, totalCount, insight);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<PublicationProvider>();
-    final totalCount =
-        _papersTotal > 0 ? _papersTotal : widget.domain.count;
-
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          widget.domain.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-      body: _buildBody(provider, totalCount),
+                ),
     );
   }
 }
 
-/// Donut chart phân bổ domain — dùng ở ResearchDomainsScreen.
 class DomainDonutChart extends StatelessWidget {
   final List<OpenAlexRankedEntity> domains;
   final void Function(OpenAlexRankedEntity domain)? onDomainTap;
@@ -412,7 +367,6 @@ class DomainDonutChart extends StatelessWidget {
 
   static const _chartColors = AppColors.chartDonutPalette;
 
-  /// PieChart (fl_chart) + legend 5 domain đầu + % share.
   @override
   Widget build(BuildContext context) {
     if (domains.isEmpty) return const SizedBox.shrink();
@@ -480,7 +434,6 @@ class DomainDonutChart extends StatelessWidget {
   }
 }
 
-/// Một dòng chú thích màu bên cạnh donut chart.
 class _LegendRow extends StatelessWidget {
   final Color color;
   final String name;
@@ -496,51 +449,8 @@ class _LegendRow extends StatelessWidget {
     this.onTap,
   });
 
-  /// Hiển thị chấm màu + tên domain + count + %.
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(6),
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 8, top: 2),
-          child: Row(
-            children: [
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 11),
-                ),
-              ),
-              Text(
-                '${formatOpenAlexCount(count)} · ${percent.toStringAsFixed(1)}%',
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-              if (onTap != null) ...[
-                const SizedBox(width: 2),
-                const Icon(
-                  Icons.chevron_right,
-                  size: 14,
-                  color: AppColors.textSecondary,
-                ),
-              ],
-            ],
-=======
     final row = Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -549,9 +459,25 @@ class _LegendRow extends StatelessWidget {
             width: 10,
             height: 10,
             decoration: BoxDecoration(color: color, shape: BoxShape.circle),
->>>>>>> feature/lab3
           ),
-        ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11),
+            ),
+          ),
+          Text(
+            '${formatOpenAlexCount(count)} · ${percent.toStringAsFixed(1)}%',
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
       ),
     );
     if (onTap == null) return row;

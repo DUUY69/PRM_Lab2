@@ -1,7 +1,3 @@
-// =============================================================================
-// top_authors_screen.dart — DANH SÁCH TOP AUTHORS (màn classic)
-// =============================================================================
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,13 +12,8 @@ class TopAuthorsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    final provider = context.watch<PublicationProvider>();
-    final topAuthors = provider.dashboardRankedAuthors;
-=======
     final provider = context.watch<PublicationViewModel>();
     final topAuthors = provider.rankedAuthors;
->>>>>>> feature/lab3
 
     return Scaffold(
       appBar: AppBar(

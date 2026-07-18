@@ -54,12 +54,13 @@ class OpenAlexService {
   String get _apiKey => _config.apiKey;
 
   static const Set<int> _retryStatusCodes = {429, 502, 503, 504};
+  static const String _apiHost = 'api.openalex.org';
+  static const String _mailto = 'prm393.lab2@example.com';
   static const String _sortByCitationsDesc = 'cited_by_count:desc';
 
   /// OpenAlex cho tối đa 100 bài/request; app hiển thị 20/trang cho UX
   static const int _perPage = 100;
   static const int listPageSize = 20;
-  static const int _searchListPages = 3;
   static const int _citationScanPerPage = 200;
   static const int _citationScanMaxPages = 15;
 
@@ -1295,7 +1296,7 @@ class OpenAlexService {
       globalInfluential: globalInfluential,
       filterOverride: filterOverride,
     );
-    final url = Uri.https('api.openalex.org', '/works', queryParams);
+    final url = Uri.https(_apiHost, '/works', queryParams);
     return _getJson(url);
   }
 
@@ -1307,7 +1308,7 @@ class OpenAlexService {
   }) {
     final queryParams = <String, String>{
       'group_by': groupBy,
-      'mailto': 'prm393.lab2@example.com',
+      'mailto': _mailto,
     };
 
     final filter = filterOverride ??
@@ -1462,7 +1463,7 @@ class OpenAlexService {
       ..['per-page'] = '${limit.clamp(1, _perPage)}'
       ..['page'] = '1';
 
-    final url = Uri.https('api.openalex.org', '/$entityPath', queryParams);
+    final url = Uri.https(_apiHost, '/$entityPath', queryParams);
     final data = await _getJson(url);
     return parseEntityImpactProfiles(data);
   }
@@ -1476,7 +1477,7 @@ class OpenAlexService {
     final params = <String, String>{
       'sort': sort,
       'select': 'id,display_name,works_count,cited_by_count,summary_stats',
-      'mailto': 'prm393.lab2@example.com',
+      'mailto': _mailto,
     };
 
     final topicFilter = _topicIdsFilter(topicIds);
@@ -1546,30 +1547,6 @@ class OpenAlexService {
     return profiles;
   }
 
-  Future<OpenAlexWorksResult> _fetchWorksPaginated(
-    Map<String, String> baseParams, {
-    int maxPages = _searchListPages,
-  }) async {
-    final publications = <Publication>[];
-    var totalOnOpenAlex = 0;
-
-    for (var page = 1; page <= maxPages; page++) {
-      final pageResult = await _fetchWorksPage(baseParams, page: page);
-
-      totalOnOpenAlex = pageResult.totalOnOpenAlex;
-      publications.addAll(pageResult.publications);
-
-      if (pageResult.publications.length < _perPage) {
-        break;
-      }
-    }
-
-    return OpenAlexWorksResult(
-      publications: publications,
-      totalOnOpenAlex: totalOnOpenAlex,
-    );
-  }
-
   /// Gọi GET /works — parse JSON thành danh sách Publication + meta.count
   Future<OpenAlexWorksResult> _fetchWorksPage(
     Map<String, String> baseParams, {
@@ -1581,14 +1558,14 @@ class OpenAlexService {
       'per-page': '$perPage',
       'page': '$page',
       'select': baseParams['select'] ?? _selectFields,
-      'mailto': 'prm393.lab2@example.com',
+      'mailto': _mailto,
     };
 
     if (_apiKey.isNotEmpty) {
       queryParams['api_key'] = _apiKey;
     }
 
-    final url = Uri.https('api.openalex.org', '/works', queryParams);
+    final url = Uri.https(_apiHost, '/works', queryParams);
     final data = await _getJson(url);
 
     final List results = data['results'] ?? [];
