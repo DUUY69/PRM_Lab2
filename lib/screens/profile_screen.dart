@@ -519,9 +519,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     title: const Text('Generate Handled Exception'),
                     subtitle: const Text('Record a non-fatal error'),
                     onTap: () async {
+                      final messenger = ScaffoldMessenger.of(context);
                       await CrashlyticsService.generateHandledException();
                       if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(
                           content: Text('Handled exception recorded'),
                         ),

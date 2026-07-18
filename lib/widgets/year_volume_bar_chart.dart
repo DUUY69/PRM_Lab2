@@ -120,11 +120,12 @@ class _YearVolumeBarChartState extends State<YearVolumeBarChart> {
   _YearChartSlice _sliceData() {
     final sorted = widget.yearlyData.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
-    final slice = widget.isMonthly
-        ? sorted
-        : (sorted.length <= widget.maxYears
-            ? sorted
-            : sorted.sublist(sorted.length - widget.maxYears));
+    final List<MapEntry<int, int>> slice;
+    if (widget.isMonthly || sorted.length <= widget.maxYears) {
+      slice = sorted;
+    } else {
+      slice = sorted.sublist(sorted.length - widget.maxYears);
+    }
     final values = slice.map((e) => e.value).toList();
     return _YearChartSlice(
       keys: slice.map((e) => e.key).toList(),
@@ -262,10 +263,18 @@ class _YearVolumeBarChartState extends State<YearVolumeBarChart> {
         ? monthShortLabel(keys[index])
         : '${keys[index]}';
     final isEdge = index == 0 || index == keys.length - 1;
+    final double labelWidth;
+    if (isEdge) {
+      labelWidth = 60;
+    } else if (scrollable) {
+      labelWidth = 52;
+    } else {
+      labelWidth = 36;
+    }
     return buildChartAxisLabel(
       text: label,
       rotate: layout.rotateLabels,
-      labelWidth: isEdge ? 60 : (scrollable ? 52 : 36),
+      labelWidth: labelWidth,
       textAlign: chartAxisLabelAlign(index: index, count: keys.length),
     );
   }

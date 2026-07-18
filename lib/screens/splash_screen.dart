@@ -32,15 +32,15 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: AppColors.surface,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const AppLogo(size: 88),
-            const SizedBox(height: 20),
-            const Text(
+            AppLogo(size: 88),
+            SizedBox(height: 20),
+            Text(
               'JournalAI',
               style: TextStyle(
                 fontSize: 26,
@@ -48,16 +48,16 @@ class _SplashScreenState extends State<SplashScreen> {
                 letterSpacing: -0.5,
               ),
             ),
-            const SizedBox(height: 6),
-            const Text(
+            SizedBox(height: 6),
+            Text(
               'Research Intelligence',
               style: TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
               ),
             ),
-            const SizedBox(height: 48),
-            const SizedBox(
+            SizedBox(height: 48),
+            SizedBox(
               width: 160,
               child: LinearProgressIndicator(
                 minHeight: 2,
@@ -65,8 +65,8 @@ class _SplashScreenState extends State<SplashScreen> {
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 12),
-            const Text(
+            SizedBox(height: 12),
+            Text(
               'Loading research data...',
               style: TextStyle(
                 color: AppColors.textSecondary,
