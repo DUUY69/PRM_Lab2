@@ -512,10 +512,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               onTap: _recordHandledException,
             ),
             const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.error, color: Colors.red),
-              title: const Text('Generate Test Crash'),
-              subtitle: const Text('Trigger a fatal crash for testing'),
+            const ListTile(
+              leading: Icon(Icons.error, color: Colors.red),
+              title: Text('Generate Test Crash'),
+              subtitle: Text('Trigger a fatal crash for testing'),
               onTap: CrashlyticsService.generateTestCrash,
             ),
           ],
