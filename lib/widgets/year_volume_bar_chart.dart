@@ -27,6 +27,18 @@ class YearVolumeBarChart extends StatefulWidget {
   State<YearVolumeBarChart> createState() => _YearVolumeBarChartState();
 }
 
+class _YearChartSlice {
+  const _YearChartSlice({
+    required this.keys,
+    required this.values,
+    required this.maxY,
+  });
+
+  final List<int> keys;
+  final List<int> values;
+  final double maxY;
+}
+
 class _YearVolumeBarChartState extends State<YearVolumeBarChart> {
   int? _selectedIndex;
 
@@ -44,6 +56,68 @@ class _YearVolumeBarChartState extends State<YearVolumeBarChart> {
       );
     }
 
+    final slice = _sliceData();
+    final scrollable = ScrollableChartFrame.needsScroll(
+      context,
+      pointCount: slice.keys.length,
+      isMonthly: widget.isMonthly,
+    );
+    final layout = scrollable
+        ? _scrollLayout(slice.keys.length, widget.isMonthly)
+        : ChartAxisLayout.fit(
+            context,
+            pointCount: slice.keys.length,
+            isMonthly: widget.isMonthly,
+          );
+    final chartHeight = 240.0 + (layout.rotateLabels ? 16.0 : 0.0);
+    final chartWidth = scrollable
+        ? ScrollableChartFrame.contentWidth(
+            context,
+            pointCount: slice.keys.length,
+            isMonthly: widget.isMonthly,
+          )
+        : ChartAxisLayout.viewportWidth(context);
+    final chart = _buildBarChart(
+      slice: slice,
+      layout: layout,
+      chartWidth: chartWidth,
+      chartHeight: chartHeight,
+      scrollable: scrollable,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ChartTouchBanner(
+          primaryText: _bannerPrimary(slice.keys),
+          secondaryText: _bannerSecondary(slice.values),
+        ),
+        if (scrollable)
+          ScrollableChartFrame(
+            height: chartHeight,
+            scrollable: true,
+            scrollToEnd: true,
+            child: chart,
+          )
+        else
+          SizedBox(height: chartHeight, child: chart),
+        if (_shouldShowDeclineNote(slice.values)) ...[
+          const SizedBox(height: 6),
+          Text(
+            'Chạm cột để xem số bài — năm gần đây thấp hơn đỉnh 2017–2020 nhưng vẫn có dữ liệu',
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.textTertiary.withValues(alpha: 0.95),
+              height: 1.3,
+            ),
+          ),
+        ],
+        if (scrollable) const SizedBox(height: 2),
+      ],
+    );
+  }
+
+  _YearChartSlice _sliceData() {
     final sorted = widget.yearlyData.entries.toList()
       ..sort((a, b) => a.key.compareTo(b.key));
     final slice = widget.isMonthly
@@ -51,127 +125,62 @@ class _YearVolumeBarChartState extends State<YearVolumeBarChart> {
         : (sorted.length <= widget.maxYears
             ? sorted
             : sorted.sublist(sorted.length - widget.maxYears));
-    final keys = slice.map((e) => e.key).toList();
     final values = slice.map((e) => e.value).toList();
-    final maxY = values.reduce((a, b) => a > b ? a : b).toDouble();
-    final scrollable = ScrollableChartFrame.needsScroll(
-      context,
-      pointCount: keys.length,
-      isMonthly: widget.isMonthly,
+    return _YearChartSlice(
+      keys: slice.map((e) => e.key).toList(),
+      values: values,
+      maxY: values.reduce((a, b) => a > b ? a : b).toDouble(),
     );
-    final chartWidth = scrollable
-        ? ScrollableChartFrame.contentWidth(
-            context,
-            pointCount: keys.length,
-            isMonthly: widget.isMonthly,
-          )
-        : ChartAxisLayout.viewportWidth(context);
-    final layout = scrollable
-        ? _scrollLayout(keys.length, widget.isMonthly)
-        : ChartAxisLayout.fit(
-            context,
-            pointCount: keys.length,
-            isMonthly: widget.isMonthly,
-          );
-    final chartHeight = 240.0 + (layout.rotateLabels ? 16.0 : 0.0);
-    final showDeclineNote = _shouldShowDeclineNote(values);
-    final selectedIndex = _selectedIndex;
-    final bannerPrimary = selectedIndex != null &&
-            selectedIndex >= 0 &&
-            selectedIndex < keys.length
-        ? '${keys[selectedIndex]}'
-        : null;
-    final bannerSecondary = selectedIndex != null &&
-            selectedIndex >= 0 &&
-            selectedIndex < values.length
-        ? '${formatOpenAlexCount(values[selectedIndex])} papers'
-        : 'Chạm cột để xem số bài theo năm';
+  }
 
-    final chart = SizedBox(
+  String? _bannerPrimary(List<int> keys) {
+    final index = _selectedIndex;
+    if (index == null || index < 0 || index >= keys.length) return null;
+    return '${keys[index]}';
+  }
+
+  String _bannerSecondary(List<int> values) {
+    final index = _selectedIndex;
+    if (index == null || index < 0 || index >= values.length) {
+      return 'Chạm cột để xem số bài theo năm';
+    }
+    return '${formatOpenAlexCount(values[index])} papers';
+  }
+
+  Widget _buildBarChart({
+    required _YearChartSlice slice,
+    required ChartAxisLayout layout,
+    required double chartWidth,
+    required double chartHeight,
+    required bool scrollable,
+  }) {
+    return SizedBox(
       width: chartWidth,
       height: chartHeight,
       child: BarChart(
         BarChartData(
-          maxY: maxY * 1.15,
+          maxY: slice.maxY * 1.15,
           alignment: BarChartAlignment.spaceBetween,
           groupsSpace: layout.groupsSpace,
-          barTouchData: BarTouchData(
-            enabled: true,
-            handleBuiltInTouches: false,
-            touchTooltipData: const BarTouchTooltipData(),
-            touchCallback: (event, response) {
-              if (!event.isInterestedForInteractions) return;
-              final index = response?.spot?.touchedBarGroupIndex;
-              if (index == null || index < 0 || index >= keys.length) return;
-              setState(() => _selectedIndex = index);
-              widget.onYearTap?.call(keys[index]);
-            },
-          ),
+          barTouchData: _barTouchData(slice.keys),
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
-            horizontalInterval: maxY > 0 ? maxY / 4 : 1,
+            horizontalInterval: slice.maxY > 0 ? slice.maxY / 4 : 1,
             getDrawingHorizontalLine: (_) => const FlLine(
               color: AppColors.border,
               strokeWidth: 1,
             ),
           ),
           borderData: FlBorderData(show: false),
-          titlesData: FlTitlesData(
-            topTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles:
-                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: layout.leftAxisSize,
-                interval: maxY > 0 ? maxY / 4 : 1,
-                getTitlesWidget: (value, meta) => Text(
-                  formatOpenAlexCount(value.toInt()),
-                  style: const TextStyle(
-                    fontSize: 9,
-                    color: AppColors.textTertiary,
-                  ),
-                ),
-              ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: layout.bottomReserved,
-                interval: 1,
-                getTitlesWidget: (value, meta) {
-                  final index = value.toInt();
-                  if (index < 0 ||
-                      index >= keys.length ||
-                      index % layout.labelInterval != 0) {
-                    return const SizedBox.shrink();
-                  }
-                  final label = widget.isMonthly
-                      ? monthShortLabel(keys[index])
-                      : '${keys[index]}';
-                  final isEdge = index == 0 || index == keys.length - 1;
-                  return buildChartAxisLabel(
-                    text: label,
-                    rotate: layout.rotateLabels,
-                    labelWidth: isEdge ? 60 : (scrollable ? 52 : 36),
-                    textAlign: chartAxisLabelAlign(
-                      index: index,
-                      count: keys.length,
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
+          titlesData: _titlesData(slice, layout, scrollable),
           barGroups: [
-            for (var i = 0; i < values.length; i++)
+            for (var i = 0; i < slice.values.length; i++)
               BarChartGroupData(
                 x: i,
                 barRods: [
                   BarChartRodData(
-                    toY: values[i].toDouble(),
+                    toY: slice.values[i].toDouble(),
                     width: layout.barWidth,
                     color: _selectedIndex == i
                         ? AppColors.chartPrimary.withValues(alpha: 0.85)
@@ -186,36 +195,78 @@ class _YearVolumeBarChartState extends State<YearVolumeBarChart> {
         ),
       ),
     );
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ChartTouchBanner(
-          primaryText: bannerPrimary,
-          secondaryText: bannerSecondary,
-        ),
-        if (scrollable)
-          ScrollableChartFrame(
-            height: chartHeight,
-            scrollable: true,
-            scrollToEnd: true,
-            child: chart,
-          )
-        else
-          SizedBox(height: chartHeight, child: chart),
-        if (showDeclineNote) ...[
-          const SizedBox(height: 6),
-          Text(
-            'Chạm cột để xem số bài — năm gần đây thấp hơn đỉnh 2017–2020 nhưng vẫn có dữ liệu',
-            style: TextStyle(
-              fontSize: 10,
-              color: AppColors.textTertiary.withValues(alpha: 0.95),
-              height: 1.3,
+  BarTouchData _barTouchData(List<int> keys) {
+    return BarTouchData(
+      enabled: true,
+      handleBuiltInTouches: false,
+      touchTooltipData: const BarTouchTooltipData(),
+      touchCallback: (event, response) {
+        if (!event.isInterestedForInteractions) return;
+        final index = response?.spot?.touchedBarGroupIndex;
+        if (index == null || index < 0 || index >= keys.length) return;
+        setState(() => _selectedIndex = index);
+        widget.onYearTap?.call(keys[index]);
+      },
+    );
+  }
+
+  FlTitlesData _titlesData(
+    _YearChartSlice slice,
+    ChartAxisLayout layout,
+    bool scrollable,
+  ) {
+    return FlTitlesData(
+      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      leftTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          reservedSize: layout.leftAxisSize,
+          interval: slice.maxY > 0 ? slice.maxY / 4 : 1,
+          getTitlesWidget: (value, meta) => Text(
+            formatOpenAlexCount(value.toInt()),
+            style: const TextStyle(
+              fontSize: 9,
+              color: AppColors.textTertiary,
             ),
           ),
-        ],
-        if (scrollable) const SizedBox(height: 2),
-      ],
+        ),
+      ),
+      bottomTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          reservedSize: layout.bottomReserved,
+          interval: 1,
+          getTitlesWidget: (value, meta) =>
+              _bottomTitle(value, slice.keys, layout, scrollable),
+        ),
+      ),
+    );
+  }
+
+  Widget _bottomTitle(
+    double value,
+    List<int> keys,
+    ChartAxisLayout layout,
+    bool scrollable,
+  ) {
+    final index = value.toInt();
+    if (index < 0 ||
+        index >= keys.length ||
+        index % layout.labelInterval != 0) {
+      return const SizedBox.shrink();
+    }
+    final label = widget.isMonthly
+        ? monthShortLabel(keys[index])
+        : '${keys[index]}';
+    final isEdge = index == 0 || index == keys.length - 1;
+    return buildChartAxisLabel(
+      text: label,
+      rotate: layout.rotateLabels,
+      labelWidth: isEdge ? 60 : (scrollable ? 52 : 36),
+      textAlign: chartAxisLabelAlign(index: index, count: keys.length),
     );
   }
 

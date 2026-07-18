@@ -129,13 +129,16 @@ class _TrendChartState extends State<TrendChart> {
     }
     final year = scale.labelForIndex(index);
     final papers = formatOpenAlexCount(scale.spots[index].y.toInt());
-    final overlay = scale.hasOverlay && index < scale.overlayValues.length
-        ? formatOpenAlexCount(scale.overlayValues[index])
-        : null;
-    return (
-      year,
-      overlay != null ? '$papers papers · $overlay citations' : '$papers papers',
-    );
+    final secondary = _bannerSecondary(scale, index, papers);
+    return (year, secondary);
+  }
+
+  String _bannerSecondary(_TrendChartScale scale, int index, String papers) {
+    final hasOverlay =
+        scale.hasOverlay && index < scale.overlayValues.length;
+    if (!hasOverlay) return '$papers papers';
+    final citations = formatOpenAlexCount(scale.overlayValues[index]);
+    return '$papers papers · $citations citations';
   }
 
   _TrendChartScale? _buildScale(
@@ -147,49 +150,54 @@ class _TrendChartState extends State<TrendChart> {
       return null;
     }
 
-    final spots = <FlSpot>[];
-    for (var i = 0; i < years.length; i++) {
-      spots.add(FlSpot(i.toDouble(), data[years[i]]!.toDouble()));
-    }
+    final spots = <FlSpot>[
+      for (var i = 0; i < years.length; i++)
+        FlSpot(i.toDouble(), data[years[i]]!.toDouble()),
+    ];
 
     final maxY = data.values.reduce((a, b) => a > b ? a : b).toDouble();
     final minY = data.values.reduce((a, b) => a < b ? a : b).toDouble();
     final yPadding = (maxY - minY) * 0.12;
     final chartMaxY = maxY + (yPadding > 0 ? yPadding : maxY * 0.1);
     const chartMinY = 0.0;
-
-    final overlayValues = <int>[];
-    final overlaySpots = <FlSpot>[];
-    if (overlay != null && overlay.isNotEmpty) {
-      for (var i = 0; i < years.length; i++) {
-        overlayValues.add(overlay[years[i]] ?? 0);
-      }
-      final overlayMax = overlayValues
-          .fold<int>(0, (max, value) => value > max ? value : max)
-          .toDouble();
-      if (overlayMax > 0) {
-        for (var i = 0; i < years.length; i++) {
-          overlaySpots.add(
-            FlSpot(
-              i.toDouble(),
-              overlayValues[i] / overlayMax * chartMaxY,
-            ),
-          );
-        }
-      }
-    }
+    final overlaySeries = _buildOverlaySeries(years, overlay, chartMaxY);
+    final labelInterval = widget.isMonthly && years.length > 8 ? 2 : 1;
 
     return _TrendChartScale(
       years: years,
       spots: spots,
-      overlaySpots: overlaySpots,
-      overlayValues: overlayValues,
+      overlaySpots: overlaySeries.$1,
+      overlayValues: overlaySeries.$2,
       chartMinY: chartMinY,
       chartMaxY: chartMaxY,
       yInterval: _niceInterval(chartMaxY - chartMinY),
-      labelInterval: widget.isMonthly ? (years.length > 8 ? 2 : 1) : 1,
+      labelInterval: labelInterval,
       isMonthly: widget.isMonthly,
     );
+  }
+
+  (List<FlSpot>, List<int>) _buildOverlaySeries(
+    List<int> years,
+    Map<int, int>? overlay,
+    double chartMaxY,
+  ) {
+    if (overlay == null || overlay.isEmpty) {
+      return (const <FlSpot>[], const <int>[]);
+    }
+    final overlayValues = [
+      for (final year in years) overlay[year] ?? 0,
+    ];
+    final overlayMax = overlayValues
+        .fold<int>(0, (max, value) => value > max ? value : max)
+        .toDouble();
+    if (overlayMax <= 0) {
+      return (const <FlSpot>[], overlayValues);
+    }
+    final spots = [
+      for (var i = 0; i < years.length; i++)
+        FlSpot(i.toDouble(), overlayValues[i] / overlayMax * chartMaxY),
+    ];
+    return (spots, overlayValues);
   }
 
   LineChartData _buildChartData(_TrendChartScale scale) {
