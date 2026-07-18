@@ -126,163 +126,173 @@ class _AuthorDetailScreenState extends State<AuthorDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(widget.author.name)),
+      body: _buildBody(context),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null && _papers.isEmpty) return _buildError();
+    return _buildContent(context);
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(_error!),
+          TextButton(
+            onPressed: _loadInitial,
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     final totalCount =
         _totalCount > 0 ? _totalCount : widget.author.count;
     final insight = _insight;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.author.name)),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null && _papers.isEmpty
-              ? Center(
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        MockupCard(
+          child: Row(
+            children: [
+              Expanded(
+                child: _StatCol(
+                  label: 'Publications',
+                  value: formatOpenAlexCount(totalCount),
+                ),
+              ),
+              Expanded(
+                child: _StatCol(
+                  label: 'Avg Citations',
+                  value: _avgCitations.toStringAsFixed(0),
+                  hint: 'loaded papers',
+                ),
+              ),
+              Expanded(
+                child: _StatCol(
+                  label: 'Loaded',
+                  value: '${_papers.length}',
+                  hint: 'on screen',
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (insight != null) ...[
+          const SizedBox(height: 16),
+          MockupCard(
+            child: Row(
+              children: [
+                Expanded(
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_error!),
-                      TextButton(
-                        onPressed: _loadInitial,
-                        child: const Text('Retry'),
+                      Text(
+                        ResearchInsights.formatGrowth(
+                          insight.periodGrowthPercent,
+                        ),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const Text(
+                        'Publication growth',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 11,
+                        ),
                       ),
                     ],
                   ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    MockupCard(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _StatCol(
-                              label: 'Publications',
-                              value: formatOpenAlexCount(totalCount),
-                            ),
-                          ),
-                          Expanded(
-                            child: _StatCol(
-                              label: 'Avg Citations',
-                              value: _avgCitations.toStringAsFixed(0),
-                              hint: 'loaded papers',
-                            ),
-                          ),
-                          Expanded(
-                            child: _StatCol(
-                              label: 'Loaded',
-                              value: '${_papers.length}',
-                              hint: 'on screen',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (insight != null) ...[
-                      const SizedBox(height: 16),
-                      MockupCard(
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    ResearchInsights.formatGrowth(
-                                      insight.periodGrowthPercent,
-                                    ),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                  const Text(
-                                    'Publication growth',
-                                    style: TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            MomentumBadge(level: insight.momentum),
-                          ],
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    const ScreenSectionHeader(
-                      title: 'Publication Trend',
-                      subtitle: 'Works by this author · OpenAlex',
-                    ),
-                    const SizedBox(height: 12),
-                    MockupCard(
-                      padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
-                      child: _trend.isEmpty
-                          ? const Text(
-                              'No trend data for this author.',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                            )
-                          : TrendChart(yearlyData: _trend),
-                    ),
-                    const SizedBox(height: 24),
-                    const ScreenSectionHeader(
-                      title: 'Top Papers',
-                      subtitle: 'Most cited works by this author',
-                    ),
-                    const SizedBox(height: 8),
-                    if (_papers.isEmpty)
-                      const Text('No papers found on OpenAlex.')
-                    else ...[
-                      ..._papers.map(
-                        (paper) => PublicationCard(publication: paper),
-                      ),
-                      LoadMoreFooter(
-                        loadedCount: _papers.length,
-                        totalCount: totalCount,
-                        isLoading: _loadingMore,
-                        hasMore: _hasMore,
-                        onLoadMore: _loadMore,
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    const ScreenSectionHeader(
-                      title: 'Top Journals',
-                      subtitle: 'Where this author publishes most',
-                    ),
-                    const SizedBox(height: 8),
-                    if (_journals.isEmpty)
-                      const Text(
-                        'No journal data for this author.',
-                        style: TextStyle(color: AppColors.textSecondary),
-                      )
-                    else
-                      MockupCard(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        child: Column(
-                          children: _journals.asMap().entries.map((entry) {
-                            final journal = entry.value;
-                            return RankedMetricTile(
-                              rank: entry.key + 1,
-                              title: journal.name,
-                              metricValue: formatOpenAlexCount(journal.count),
-                              metricLabel: 'publications',
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => JournalDetailScreen(
-                                    journal: journal,
-                                    provider: widget.provider,
-                                  ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      ),
-                  ],
                 ),
+                MomentumBadge(level: insight.momentum),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 20),
+        const ScreenSectionHeader(
+          title: 'Publication Trend',
+          subtitle: 'Works by this author · OpenAlex',
+        ),
+        const SizedBox(height: 12),
+        MockupCard(
+          padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
+          child: _trend.isEmpty
+              ? const Text(
+                  'No trend data for this author.',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                  ),
+                )
+              : TrendChart(yearlyData: _trend),
+        ),
+        const SizedBox(height: 24),
+        const ScreenSectionHeader(
+          title: 'Top Papers',
+          subtitle: 'Most cited works by this author',
+        ),
+        const SizedBox(height: 8),
+        if (_papers.isEmpty)
+          const Text('No papers found on OpenAlex.')
+        else ...[
+          ..._papers.map(
+            (paper) => PublicationCard(publication: paper),
+          ),
+          LoadMoreFooter(
+            loadedCount: _papers.length,
+            totalCount: totalCount,
+            isLoading: _loadingMore,
+            hasMore: _hasMore,
+            onLoadMore: _loadMore,
+          ),
+        ],
+        const SizedBox(height: 24),
+        const ScreenSectionHeader(
+          title: 'Top Journals',
+          subtitle: 'Where this author publishes most',
+        ),
+        const SizedBox(height: 8),
+        if (_journals.isEmpty)
+          const Text(
+            'No journal data for this author.',
+            style: TextStyle(color: AppColors.textSecondary),
+          )
+        else
+          MockupCard(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Column(
+              children: _journals.asMap().entries.map((entry) {
+                final journal = entry.value;
+                return RankedMetricTile(
+                  rank: entry.key + 1,
+                  title: journal.name,
+                  metricValue: formatOpenAlexCount(journal.count),
+                  metricLabel: 'publications',
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => JournalDetailScreen(
+                        journal: journal,
+                        provider: widget.provider,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+      ],
     );
   }
 }

@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 /// Bảng màu cố định — dùng AppColors.xxx thay vì hard-code hex trong widget
 class AppColors {
   static const background = Color(0xFFF7F7F7);
-  static const surface = Colors.white;
+  static const surface = Color(0xFFFFFFFF);
   static const surfaceMuted = Color(0xFFF0F0F0);
   static const border = Color(0xFFE4E4E4);
   static const textPrimary = Color(0xFF111111);

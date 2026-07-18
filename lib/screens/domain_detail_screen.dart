@@ -120,9 +120,6 @@ class _DomainDetailScreenState extends State<DomainDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PublicationViewModel>();
-    final insight = _insight;
-    final totalCount =
-        _papersTotal > 0 ? _papersTotal : widget.domain.count;
 
     return Scaffold(
       appBar: AppBar(
@@ -136,221 +133,239 @@ class _DomainDetailScreenState extends State<DomainDetailScreen> {
           overflow: TextOverflow.ellipsis,
         ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-          : _error != null && insight == null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        TextButton(onPressed: _load, child: const Text('Retry')),
-                      ],
-                    ),
-                  ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.all(20),
+      body: _buildBody(context, provider),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, PublicationViewModel provider) {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    if (_error != null && _insight == null) return _buildError();
+    return _buildContent(context, provider);
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_error!, textAlign: TextAlign.center),
+            TextButton(onPressed: _load, child: const Text('Retry')),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(
+    BuildContext context,
+    PublicationViewModel provider,
+  ) {
+    final insight = _insight;
+    final totalCount =
+        _papersTotal > 0 ? _papersTotal : widget.domain.count;
+
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        MockupCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                formatOpenAlexCount(totalCount),
+                style: const TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Text(
+                'Publications in this domain',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+              if (insight != null) ...[
+                const SizedBox(height: 14),
+                Row(
                   children: [
-                    MockupCard(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            formatOpenAlexCount(totalCount),
+                            ResearchInsights.formatGrowth(
+                              insight.periodGrowthPercent,
+                            ),
                             style: const TextStyle(
-                              fontSize: 28,
                               fontWeight: FontWeight.w700,
+                              fontSize: 16,
                             ),
                           ),
                           const Text(
-                            'Publications in this domain',
-                            style: TextStyle(color: AppColors.textSecondary),
+                            'Domain growth',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 11,
+                            ),
                           ),
-                          if (insight != null) ...[
-                            const SizedBox(height: 14),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        ResearchInsights.formatGrowth(
-                                          insight.periodGrowthPercent,
-                                        ),
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      const Text(
-                                        'Domain growth',
-                                        style: TextStyle(
-                                          color: AppColors.textSecondary,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                MomentumBadge(level: insight.momentum),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              insight.headline,
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    const ScreenSectionHeader(
-                      title: 'Publication Trend',
-                      subtitle: 'Works tagged with this OpenAlex concept',
-                    ),
-                    const SizedBox(height: 12),
-                    MockupCard(
-                      padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
-                      child: _trend.isEmpty
-                          ? const Text(
-                              'No trend data for this domain.',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                            )
-                          : TrendChart(yearlyData: _trend),
-                    ),
-                    const SizedBox(height: 24),
-                    const ScreenSectionHeader(
-                      title: 'Top Papers',
-                      subtitle: 'Most cited in this domain',
-                    ),
-                    const SizedBox(height: 8),
-                    if (_papers.isEmpty)
-                      const Text(
-                        'No papers loaded for this domain.',
-                        style: TextStyle(color: AppColors.textSecondary),
-                      )
-                    else ...[
-                      ..._papers.map(
-                        (paper) => PublicationCard(publication: paper),
-                      ),
-                      LoadMoreFooter(
-                        loadedCount: _papers.length,
-                        totalCount: totalCount,
-                        isLoading: _loadingMorePapers,
-                        hasMore: _papersHasMore,
-                        onLoadMore: _loadMorePapers,
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    const ScreenSectionHeader(
-                      title: 'Top Authors',
-                      subtitle: 'Most publications in this domain',
-                    ),
-                    const SizedBox(height: 8),
-                    if (_authors.isEmpty)
-                      const Text(
-                        'No author data for this domain.',
-                        style: TextStyle(color: AppColors.textSecondary),
-                      )
-                    else
-                      MockupCard(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        child: Column(
-                          children: _authors
-                              .map(
-                                (author) => ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text(
-                                    author.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    '${formatOpenAlexCount(author.count)} '
-                                    'publications',
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                  trailing: const Icon(
-                                    Icons.chevron_right,
-                                    size: 16,
-                                  ),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => AuthorDetailScreen(
-                                        author: author,
-                                        provider: provider,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ),
-                    const SizedBox(height: 24),
-                    const ScreenSectionHeader(
-                      title: 'Top Journals',
-                      subtitle: 'Where this domain publishes most',
-                    ),
-                    const SizedBox(height: 8),
-                    if (_journals.isEmpty)
-                      const Text(
-                        'No journal data for this domain.',
-                        style: TextStyle(color: AppColors.textSecondary),
-                      )
-                    else
-                      MockupCard(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                        child: Column(
-                          children: _journals
-                              .map(
-                                (journal) => ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  title: Text(
-                                    journal.name,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    '${formatOpenAlexCount(journal.count)} '
-                                    'publications',
-                                    style: const TextStyle(fontSize: 12),
-                                  ),
-                                  trailing: const Icon(
-                                    Icons.chevron_right,
-                                    size: 16,
-                                  ),
-                                  onTap: () => Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => JournalDetailScreen(
-                                        journal: journal,
-                                        provider: provider,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ),
+                    MomentumBadge(level: insight.momentum),
                   ],
                 ),
+                const SizedBox(height: 6),
+                Text(
+                  insight.headline,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+        const ScreenSectionHeader(
+          title: 'Publication Trend',
+          subtitle: 'Works tagged with this OpenAlex concept',
+        ),
+        const SizedBox(height: 12),
+        MockupCard(
+          padding: const EdgeInsets.fromLTRB(8, 16, 16, 8),
+          child: _trend.isEmpty
+              ? const Text(
+                  'No trend data for this domain.',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                  ),
+                )
+              : TrendChart(yearlyData: _trend),
+        ),
+        const SizedBox(height: 24),
+        const ScreenSectionHeader(
+          title: 'Top Papers',
+          subtitle: 'Most cited in this domain',
+        ),
+        const SizedBox(height: 8),
+        if (_papers.isEmpty)
+          const Text(
+            'No papers loaded for this domain.',
+            style: TextStyle(color: AppColors.textSecondary),
+          )
+        else ...[
+          ..._papers.map(
+            (paper) => PublicationCard(publication: paper),
+          ),
+          LoadMoreFooter(
+            loadedCount: _papers.length,
+            totalCount: totalCount,
+            isLoading: _loadingMorePapers,
+            hasMore: _papersHasMore,
+            onLoadMore: _loadMorePapers,
+          ),
+        ],
+        const SizedBox(height: 24),
+        const ScreenSectionHeader(
+          title: 'Top Authors',
+          subtitle: 'Most publications in this domain',
+        ),
+        const SizedBox(height: 8),
+        if (_authors.isEmpty)
+          const Text(
+            'No author data for this domain.',
+            style: TextStyle(color: AppColors.textSecondary),
+          )
+        else
+          MockupCard(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Column(
+              children: _authors
+                  .map(
+                    (author) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        author.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${formatOpenAlexCount(author.count)} '
+                        'publications',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: const Icon(
+                        Icons.chevron_right,
+                        size: 16,
+                      ),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => AuthorDetailScreen(
+                            author: author,
+                            provider: provider,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        const SizedBox(height: 24),
+        const ScreenSectionHeader(
+          title: 'Top Journals',
+          subtitle: 'Where this domain publishes most',
+        ),
+        const SizedBox(height: 8),
+        if (_journals.isEmpty)
+          const Text(
+            'No journal data for this domain.',
+            style: TextStyle(color: AppColors.textSecondary),
+          )
+        else
+          MockupCard(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Column(
+              children: _journals
+                  .map(
+                    (journal) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        journal.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${formatOpenAlexCount(journal.count)} '
+                        'publications',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: const Icon(
+                        Icons.chevron_right,
+                        size: 16,
+                      ),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => JournalDetailScreen(
+                            journal: journal,
+                            provider: provider,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+      ],
     );
   }
 }
