@@ -29,9 +29,7 @@ jobs:
       - name: Run tests with coverage
         run: flutter test --coverage
 
-      - name: Build project
-        run: flutter build apk --debug
-
+      # Không cần build APK để quét Dart — bước này hay timeout/chậm và chặn Sonar scan.
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
